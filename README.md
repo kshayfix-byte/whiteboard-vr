@@ -26,8 +26,10 @@ Try it yourself: [https://whiteboard-vr.herokuapp.com](https://whiteboard-vr.her
 - The first **Save** on a board asks for a name. Later saves keep that name. **Rename** changes it at any time.
 - **Save all** saves every whiteboard in the room. It stays greyed out until each whiteboard has been named with its own Save button.
 - **Saved boards** lists every saved board so you can reopen it in 2D or VR.
-- **Export image** downloads the board as a PNG, in 2D (toolbar) and in VR (the green boxes left of the board, or the buttons in the top corner outside VR). In a headset, a board that still has a temporary name has to be named once on a screen first, because a headset can't show the name prompt.
-- Saved boards are JSON files in `./data` (change it with the `DATA_DIR` environment variable). Back up that folder to keep your boards. Unsaved changes are lost if the server restarts.
+- **Export image** downloads the board as a PNG, in 2D (toolbar) and in VR (the green boxes left of the board, or the buttons in the top corner outside VR). There's also a **Rename** box in VR.
+- Browsers can't show a text box inside a headset. So when a board needs a name (first Save or Rename in VR), the page leaves VR, shows the normal name box, and you press **VR** to go back in.
+- Saved boards are JSON files in `./data` (change it with the `DATA_DIR` environment variable). Back up that folder to keep your boards.
+- **Backup copy:** unsaved changes are also written every few seconds to `./data/drafts/`. If the server crashes or restarts, they come back on the board, marked "Unsaved changes recovered from backup", and you can Save them. The saved version only changes when you press Save. The backup is removed once everything is saved.
 - `GET /api/boards` lists saved boards; `GET /api/boards/<room>` shows the whiteboards in a room and whether each one is named and saved.
 
 ## Technologies

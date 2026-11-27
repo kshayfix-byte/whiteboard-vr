@@ -36,7 +36,8 @@ export function createSaveControls(options) {
         if (els.state) {
             let text = '';
             if (board) {
-                if (!board.savedAt) text = 'Not saved yet';
+                if (board.recovered) text = 'Unsaved changes recovered from backup';
+                else if (!board.savedAt) text = 'Not saved yet';
                 else if (board.dirty) text = 'Unsaved changes';
                 else text = 'Saved';
             }

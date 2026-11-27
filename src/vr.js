@@ -54,15 +54,34 @@ window.addEventListener('DOMContentLoaded', () => {
             .observe(statusEl, { childList: true, characterData: true, subtree: true });
     }
 
-    document.querySelector('a-scene').addEventListener('vr-action', (evt) => {
+    const scene = document.querySelector('a-scene');
+
+    // Browsers can't show a text box inside a headset, so to type a name we
+    // leave VR, show the normal 2D name box, and the user re-enters VR after.
+    function askOutsideVR(ask) {
+        if (!scene.is('vr-mode')) {
+            ask();
+            return;
+        }
+        scene.addEventListener('exit-vr', () => {
+            setTimeout(() => {
+                ask();
+                controls.setStatus('Press the VR button to go back into VR.');
+            }, 300);
+        }, { once: true });
+        showInScene('Leaving VR so you can type a name\u2026');
+        scene.exitVR();
+    }
+
+    scene.addEventListener('vr-action', (evt) => {
         const action = evt.detail.action;
         if (action === 'export') {
             if (painter()) painter().exportImage();
         } else if (action === 'save') {
             const result = controls.saveCurrent(false);
-            if (result.needsName) {
-                showInScene('Name this board first: take off the headset and press Save,\nor press Save on the 2D page.');
-            }
+            if (result.needsName) askOutsideVR(() => controls.saveCurrent(true));
+        } else if (action === 'rename') {
+            askOutsideVR(() => controls.renameCurrent());
         } else if (action === 'save-all') {
             controls.saveAll();
         }
