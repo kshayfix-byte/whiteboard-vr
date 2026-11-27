@@ -32,29 +32,27 @@ const socket = io();
 let id = Math.floor(Math.random() * 100000000);
 let lastX = null;
 let lastY = null;
-let background = DEFAULT_BACKGROUND;
-let boardId = 'main'; // the "add whiteboard" feature will switch this
-let boardName = '';
-let loaded = false;
 let color = "#000000";
 let size = 10;
 let clearing = false;
 
-const canvasWidth = 1500;
-const canvasHeight = 1000;
+// Every whiteboard in the room has its own canvas; only the current one is
+// shown. boards[boardId] = { canvas, context2D, background, loaded }.
+const boards = {};
+const canvasHolder = document.getElementById('canvas-holder');
+const tabList = document.getElementById('board-tab-list');
+let boardOrder = [];            // ids, oldest first (from roomInfo)
+let roomBoards = [];            // roomInfo.boards
+let wantedBoard = getParameterByName('board'); // from the URL, if any
+let boardId = null;             // the board shown and drawn on
+let boardName = '';
+let canvas = null;              // current board's canvas
+let context2D = null;
 
-const canvas = document.querySelector("#canvas");
-canvas.width = canvasWidth;
-canvas.height = canvasHeight;
-const context2D = canvas.getContext( "2d" );
-
-// draw background
-clearCanvas(context2D, canvas, background);
-
-createSaveControls({
+const controls = createSaveControls({
     socket: socket,
     room: room,
-    boardId: boardId,
+    boardId: wantedBoard || 'main',
     elements: {
         name: document.getElementById('board-name'),
         state: document.getElementById('board-state'),
@@ -69,16 +67,77 @@ createSaveControls({
     }
 });
 
-// Ask the server for the current board on every (re)connect.
+function boardFor(bid, width, height) {
+    if (boards[bid]) return boards[bid];
+    const c = document.createElement('canvas');
+    c.width = width || 1500;
+    c.height = height || 1000;
+    c.className = 'board-canvas hidden';
+    c.dataset.board = bid;
+    canvasHolder.appendChild(c);
+    attachDrawing(c);
+    const b = { canvas: c, context2D: c.getContext('2d'), background: DEFAULT_BACKGROUND, loaded: false };
+    clearCanvas(b.context2D, c, b.background);
+    boards[bid] = b;
+    return b;
+}
+
+// Show one board and point Save / Rename / Export / Erase at it.
+function showBoard(bid) {
+    if (!boards[bid]) return;
+    boardId = bid;
+    lastX = null;
+    lastY = null;
+    Object.keys(boards).forEach((k) => boards[k].canvas.classList.toggle('hidden', k !== bid));
+    canvas = boards[bid].canvas;
+    context2D = boards[bid].context2D;
+    controls.setBoard(bid);
+    const url = 'index.html?room=' + encodeURIComponent(room) + (bid === 'main' ? '' : '&board=' + encodeURIComponent(bid));
+    if (window.history && window.history.replaceState) window.history.replaceState(null, '', url);
+    document.getElementById('vr-button').href = 'vr.html?room=' + room + (bid === 'main' ? '' : '&board=' + encodeURIComponent(bid));
+    renderTabs();
+    onResize();
+}
+
+function renderTabs() {
+    tabList.innerHTML = '';
+    boardOrder.forEach((bid) => {
+        const info = roomBoards.find((b) => b.id === bid) || { name: bid };
+        const tab = document.createElement('button');
+        tab.className = 'board-tab' + (bid === boardId ? ' active' : '') +
+            (info.named === false ? ' temporary' : '') + (info.dirty && info.named === false ? ' unsaved' : '');
+        tab.setAttribute('role', 'tab');
+        tab.setAttribute('aria-selected', bid === boardId ? 'true' : 'false');
+        tab.textContent = info.name;
+        tab.title = info.name + (info.named === false ? ' (temporary name, not saved yet)' : '');
+        tab.addEventListener('click', () => showBoard(bid));
+        tabList.appendChild(tab);
+    });
+}
+
+socket.on('roomInfo', (info) => {
+    if (!info || info.room !== room) return;
+    roomBoards = info.boards || [];
+    boardOrder = roomBoards.map((b) => b.id).filter((bid) => boards[bid]);
+    // First load: open the board from the URL, or the first one.
+    if (!boardId && boardOrder.length) {
+        showBoard(boardOrder.indexOf(wantedBoard) !== -1 ? wantedBoard : boardOrder[0]);
+    } else {
+        renderTabs();
+    }
+});
+
+// Ask the server for the room's boards on every (re)connect.
 socket.on('connect', () => {
-    socket.emit('join', { room: room, board: boardId });
+    socket.emit('join', { room: room, board: boardId || wantedBoard || 'main' });
 });
 
 socket.on('boardState', (state) => {
     if (normalizeRoom(state.room) !== room) return;
-    background = state.background || DEFAULT_BACKGROUND;
-    replayBoard(context2D, canvas, state);
-    loaded = true;
+    const b = boardFor(state.board, state.width, state.height);
+    b.background = state.background || DEFAULT_BACKGROUND;
+    replayBoard(b.context2D, b.canvas, state);
+    b.loaded = true;
 });
 
 socket.on('remoteDraw', (remoteDrawObject) => {
@@ -93,28 +152,36 @@ socket.on('remoteEraseAll', (remoteEraseAllObject) => {
     }
 });
 
-
-canvas.addEventListener('mousemove', onMouseMove);
-canvas.addEventListener('mousedown', onMouseDown);
-canvas.addEventListener('mouseup', onMouseUp);
+document.getElementById('add-board').addEventListener('click', () => {
+    socket.emit('addBoard', { room: room }, (result) => {
+        if (result && result.ok) {
+            showBoard(result.board);
+            controls.setStatus('Added “' + result.name + '”');
+        } else {
+            controls.setStatus((result && result.error) || 'Could not add a whiteboard.', true);
+        }
+    });
+});
 
 function eraseAllRemote(eraseAllRemoteObject) {
     if (room != normalizeRoom(eraseAllRemoteObject.room)) {
         return;
     }
-    clearCanvas(context2D, canvas, background);
+    const b = boards[eraseAllRemoteObject.board || 'main'];
+    if (b) clearCanvas(b.context2D, b.canvas, b.background);
 }
 
 function drawRemote(remoteDrawObject) {
     if (room != normalizeRoom(remoteDrawObject.room)) {
         return;
     }
-    drawSegment(context2D, remoteDrawObject, background);
+    const b = boards[remoteDrawObject.board || 'main'];
+    if (b) drawSegment(b.context2D, remoteDrawObject, b.background);
 }
 
 function draw (x, y) {
     // Don't draw until the saved board has loaded, so nothing gets painted over.
-    if (loaded && lastX != null && lastY != null) {        
+    if (boardId && boards[boardId].loaded && lastX != null && lastY != null) {
         var drawObject= {};
         drawObject.id = id;
         drawObject.lastX = lastX;
@@ -133,60 +200,50 @@ function draw (x, y) {
     }
 }
 
-function onMouseMove( evt ) {
-
-    evt.preventDefault();
-
-    let scalingX = canvasWidth / canvas.clientWidth;
-    let scalingY = canvasHeight / canvas.clientHeight;
-
-    let x = (evt.pageX - canvas.offsetLeft) * scalingX;
-    let y = (evt.pageY - canvas.offsetTop) * scalingY;
-    draw(x,y);
-
-}
-function onMouseDown (evt) {
-    let scalingX = canvasWidth / canvas.clientWidth;
-    let scalingY = canvasHeight / canvas.clientHeight;
-
-    lastX = (evt.pageX - canvas.offsetLeft) * scalingX;
-    lastY = (evt.pageY - canvas.offsetTop) * scalingY;
-}
-function onMouseUp (evt) {
-    lastX = null;
-    lastY = null;
+// Position of a mouse/touch point in the canvas's own pixels.
+function canvasPoint(c, pageX, pageY) {
+    return [
+        (pageX - c.offsetLeft) * (c.width / c.clientWidth),
+        (pageY - c.offsetTop) * (c.height / c.clientHeight)
+    ];
 }
 
-canvas.addEventListener('touchstart', function (evt) {
-    evt.preventDefault();
-
-    let scalingX = canvasWidth / canvas.clientWidth;
-    let scalingY = canvasHeight / canvas.clientHeight;
-
-    lastX = (evt.targetTouches[0].pageX - canvas.offsetLeft) * scalingX;
-    lastY = (evt.targetTouches[0].pageY - canvas.offsetTop) * scalingY;
-}, false);
-  
-  canvas.addEventListener('touchmove', function (evt) {
-    evt.preventDefault();
-    let scalingX = canvasWidth / canvas.clientWidth;
-    let scalingY = canvasHeight / canvas.clientHeight;
-
-    let x = (evt.targetTouches[0].pageX - canvas.offsetLeft) * scalingX;
-    let y = (evt.targetTouches[0].pageY - canvas.offsetTop) * scalingY;
-    draw(x,y);
-  }, true);
-  
-  canvas.addEventListener('touchend', function (evt) {
-    evt.preventDefault();
-    lastX = null;
-    lastY = null;
-  }, false);
-  
-  canvas.addEventListener('touchcancel', function () {
-    lastX = null;
-    lastY = null;
-  });
+function attachDrawing(c) {
+    c.addEventListener('mousemove', (evt) => {
+        evt.preventDefault();
+        const p = canvasPoint(c, evt.pageX, evt.pageY);
+        draw(p[0], p[1]);
+    });
+    c.addEventListener('mousedown', (evt) => {
+        const p = canvasPoint(c, evt.pageX, evt.pageY);
+        lastX = p[0];
+        lastY = p[1];
+    });
+    c.addEventListener('mouseup', () => {
+        lastX = null;
+        lastY = null;
+    });
+    c.addEventListener('touchstart', (evt) => {
+        evt.preventDefault();
+        const p = canvasPoint(c, evt.targetTouches[0].pageX, evt.targetTouches[0].pageY);
+        lastX = p[0];
+        lastY = p[1];
+    }, false);
+    c.addEventListener('touchmove', (evt) => {
+        evt.preventDefault();
+        const p = canvasPoint(c, evt.targetTouches[0].pageX, evt.targetTouches[0].pageY);
+        draw(p[0], p[1]);
+    }, true);
+    c.addEventListener('touchend', (evt) => {
+        evt.preventDefault();
+        lastX = null;
+        lastY = null;
+    }, false);
+    c.addEventListener('touchcancel', () => {
+        lastX = null;
+        lastY = null;
+    });
+}
 
 
 const colorPicker = document.querySelector("#color-picker");
@@ -210,13 +267,15 @@ eraser.addEventListener("change", (evt) => {
 window.addEventListener('resize', onResize)
 
 function onResize() {
+    if (!canvas) return;
+    const ratio = canvas.width / canvas.height; // 1.5 for the standard board
     canvas.style.width = "94%";
-    const height = canvas.clientWidth / 1.5;
+    const height = canvas.clientWidth / ratio;
     if (height > window.innerHeight * 0.9) {
-        canvas.style.height = window.innerHeight - 100 + "px";
-        canvas.style.width = canvas.clientHeight / 0.66 + "px";
+        canvas.style.height = window.innerHeight - 150 + "px";
+        canvas.style.width = canvas.clientHeight * ratio + "px";
     } else {
-        canvas.style.height = canvas.clientWidth / 1.5 + "px";
+        canvas.style.height = canvas.clientWidth / ratio + "px";
     }
 }
 
@@ -224,7 +283,7 @@ onResize()
 
 let exportImage = document.getElementById('export-image');
 exportImage.addEventListener('click', () => {
-    downloadCanvas(canvas, exportFilename(boardName, room));
+    if (canvas) downloadCanvas(canvas, exportFilename(boardName, room));
 })
 
 
@@ -254,11 +313,11 @@ function renderBoardList(boards) {
         const links = document.createElement('div');
         const open2d = document.createElement('a');
         open2d.className = 'button';
-        open2d.href = 'index.html?room=' + encodeURIComponent(b.room);
+        open2d.href = 'index.html?room=' + encodeURIComponent(b.room) + '&board=' + encodeURIComponent(b.board);
         open2d.textContent = 'Open';
         const openVr = document.createElement('a');
         openVr.className = 'button';
-        openVr.href = 'vr.html?room=' + encodeURIComponent(b.room);
+        openVr.href = 'vr.html?room=' + encodeURIComponent(b.room) + '&board=' + encodeURIComponent(b.board);
         openVr.textContent = 'Open in VR';
         links.appendChild(open2d);
         links.appendChild(openVr);
@@ -292,6 +351,7 @@ eraseAll.addEventListener('click', () => {
     eraseAllObject.id = id;
     eraseAllObject.room = room;
     eraseAllObject.board = boardId;
+    if (!boardId) return;
     socket.emit('eraseAll', eraseAllObject);
     eraseAllRemote(eraseAllObject);
 })

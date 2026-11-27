@@ -1,59 +1,28 @@
-import io from 'socket.io-client';
+// One whiteboard in the VR scene. Each board entity has its own canvas
+// (texture) and listens only to drawings for its own board id. Pen settings
+// are shared by all boards (see ../vr/session.js).
 import {
     DEFAULT_BACKGROUND, normalizeRoom, clearCanvas, drawSegment, replayBoard,
     exportFilename, downloadCanvas
 } from '../board-client';
-
-function getParameterByName(name, url) {
-    if (!url) url = window.location.href;
-    name = name.replace(/[\[\]]/g, '\\$&');
-    var regex = new RegExp('[?&]' + name + '(=([^&#]*)|&|#|$)'),
-        results = regex.exec(url);
-    if (!results) return null;
-    if (!results[2]) return '';
-    return decodeURIComponent(results[2].replace(/\+/g, ' '));
-}
-
-let room = normalizeRoom(getParameterByName('room'));
-if (!room) {
-    room = Math.random().toString(36).substr(2, 5).toUpperCase();
-    window.location.href = "vr.html?room="+room;
-}
-
-const socket = io();
-const boardId = 'main'; // the "add whiteboard" feature will switch this
-export { socket, room, boardId };
+import { socket, room, tools, selectBoard } from '../vr/session';
 
 AFRAME.registerComponent('texture-painter', {
     schema: {
-        color: {
-            type: "color",
-            default: "black"
-        },
-        clearing: {
-            type: "boolean",
-            default: false
-        },
-        clearAll: {
-            type: "boolean",
-            default: false
-        },
-        size: {
-            type: "int",
-            default: 10
-        }
+        board: { type: 'string', default: 'main' },
+        width: { type: 'int', default: 1500 },
+        height: { type: 'int', default: 1000 }
     },
     init: function () {
 
         this.id = Math.floor(Math.random() * 100000000);
-        this.color = this.data.color;
-        this.size = this.data.size;
+        this.boardId = this.data.board;
         this.background = DEFAULT_BACKGROUND;
         this.boardName = '';
         this.loaded = false;
-        this.clearing = false;
 
         this.el.sceneEl.addEventListener('camera-set-active', this.cameraSetActive.bind(this));
+        this.camera = this.el.sceneEl.camera; // boards added later miss the event above
         this.el.sceneEl.addEventListener( 'mousemove', this.onMouseMove.bind(this), false );
         this.el.sceneEl.addEventListener( 'touchmove', this.onMouseMove.bind(this), false );
         this.el.sceneEl.addEventListener( 'mouseup', this.onMouseUp.bind(this), false );
@@ -63,6 +32,7 @@ AFRAME.registerComponent('texture-painter', {
 
         this.el.addEventListener('raycaster-intersected', evt => {
             this.raycasterObj = evt.detail.el;
+            this.hoverSelected = false; // tick() selects once the hit is confirmed
         });
         this.el.addEventListener('raycaster-intersected-cleared', evt => {
             this.lastX = null;
@@ -82,9 +52,14 @@ AFRAME.registerComponent('texture-painter', {
         
 
         var planeTexture = new THREE.Texture( undefined, THREE.UVMapping, THREE.MirroredRepeatWrapping, THREE.MirroredRepeatWrapping );
-        var planeMaterial = new THREE.MeshPhongMaterial( { map: planeTexture, shininess: 50 } );
-        this.mesh = this.el.getObject3D('mesh');
-        this.mesh.material = planeMaterial;
+        this.planeMaterial = new THREE.MeshPhongMaterial( { map: planeTexture, shininess: 50 } );
+        // The mesh may not exist yet when the board is created from code.
+        const useMaterial = () => {
+            this.mesh = this.el.getObject3D('mesh');
+            if (this.mesh) this.mesh.material = this.planeMaterial;
+        };
+        useMaterial();
+        this.el.addEventListener('object3dset', (evt) => { if (evt.detail.type === 'mesh') useMaterial(); });
 
         this.raycaster = new THREE.Raycaster();
         this.mouse = new THREE.Vector2();
@@ -96,8 +71,8 @@ AFRAME.registerComponent('texture-painter', {
         this._parentTexture = [];
 
         this._canvas = document.createElement( "canvas" );
-        this._canvas.width = 1500;
-        this._canvas.height = 1000;
+        this._canvas.width = this.data.width;
+        this._canvas.height = this.data.height;
         this._context2D = this._canvas.getContext( "2d" );
     
         this.parentTexture.image = this._canvas;
@@ -107,41 +82,34 @@ AFRAME.registerComponent('texture-painter', {
 
         this.parentTexture.needsUpdate = true;
 
-        // Load the saved board now and again after any reconnect.
-        const join = () => socket.emit('join', { room: room, board: boardId });
-        socket.on('connect', join);
-        if (socket.connected) join();
-
-        socket.on('boardState', (state) => {
-            if (normalizeRoom(state.room) !== room) return;
-            this.background = state.background || DEFAULT_BACKGROUND;
-            replayBoard(this._context2D, this._canvas, state);
-            this.parentTexture.needsUpdate = true;
-            this.setBoardName(state.name);
-            this.loaded = true;
-        });
-
-        socket.on('roomInfo', (info) => {
-            if (normalizeRoom(info.room) !== room) return;
-            const board = info.boards.find((b) => b.id === boardId);
-            if (board) this.setBoardName(board.name);
-        });
-    
-        socket.on('remoteDraw', (remoteDrawObject) => {
-            if (remoteDrawObject.id != this.id) {
-                this.drawRemote(remoteDrawObject);
-            }
-        });
-        
-        socket.on('remoteEraseAll', (remoteEraseAllObject) => {
-            if (remoteEraseAllObject.id != this.id) {
-                this.eraseAllRemote(remoteEraseAllObject);
-            }
-        });
+        // The board manager (vr.js) joins the room and passes this board's
+        // state in with loadState(). Live strokes come straight from the socket.
+        this.onRemoteDraw = (obj) => {
+            if (obj.id != this.id) this.drawRemote(obj);
+        };
+        this.onRemoteEraseAll = (obj) => {
+            if (obj.id != this.id) this.eraseAllRemote(obj);
+        };
+        socket.on('remoteDraw', this.onRemoteDraw);
+        socket.on('remoteEraseAll', this.onRemoteEraseAll);
 
     },
+    remove: function () {
+        socket.off('remoteDraw', this.onRemoteDraw);
+        socket.off('remoteEraseAll', this.onRemoteEraseAll);
+    },
+    mine: function (obj) {
+        return obj && room == normalizeRoom(obj.room) && (obj.board || 'main') === this.boardId;
+    },
+    loadState: function (state) {
+        this.background = state.background || DEFAULT_BACKGROUND;
+        replayBoard(this._context2D, this._canvas, state);
+        this.parentTexture.needsUpdate = true;
+        this.boardName = state.name || '';
+        this.loaded = true;
+    },
     drawRemote: function(remoteDrawObject) {
-        if (room != normalizeRoom(remoteDrawObject.room)) {
+        if (!this.mine(remoteDrawObject)) {
             return;
         }
         if (remoteDrawObject.lastX != null && remoteDrawObject.lastY != null) {
@@ -150,36 +118,33 @@ AFRAME.registerComponent('texture-painter', {
         }
     },
     setBoardName: function(name) {
-        if ((name || '') === this.boardName) return;
         this.boardName = name || '';
-        document.title = (this.boardName ? this.boardName + ' - ' : '') + 'Whiteboard VR';
-        this.el.sceneEl.emit('board-renamed', { name: this.boardName });
     },
     // Download the board as a PNG via the browser's normal download.
     exportImage: function() {
         downloadCanvas(this._canvas, exportFilename(this.boardName, room));
     },
     eraseAllRemote: function(remoteEraseAllObject) {
-        if (room != normalizeRoom(remoteEraseAllObject.room)) {
+        if (!this.mine(remoteEraseAllObject)) {
             return;
         }
         clearCanvas(this._context2D, this._canvas, this.background);
         this.parentTexture.needsUpdate = true;
-    },
-    update: function() {
-        this.color = this.data.color;
-        this.size = this.data.size;
-        this.clearing = this.data.clearing;
-        if (this.data.clearAll) {
-            this.eraseAll();
-        }
     },
     tick: function () {
         if (!this.raycasterObj) { return; }  // Not intersecting.
     
         let intersection = this.raycasterObj.components.raycaster.getIntersection(this.el);
         if (!intersection) { return; }
+        // Pointing a controller at a board selects it. (Checked here rather
+        // than on raycaster-intersected, which also fires for a moment while
+        // new boards are still at the origin.)
+        if (!this.hoverSelected && this.el.sceneEl.is('vr-mode')) {
+            this.hoverSelected = true;
+            selectBoard(this.boardId);
+        }
         if (this.triggerdown) {
+            selectBoard(this.boardId);
             var uv = intersection.uv;
             var x = uv.x;
             var y = 1 - uv.y;
@@ -211,7 +176,7 @@ AFRAME.registerComponent('texture-painter', {
     eraseAll: function () {
         var eraseAllObject = {};
         eraseAllObject.room = room;
-        eraseAllObject.board = boardId;
+        eraseAllObject.board = this.boardId;
         eraseAllObject.id = this.id;
         socket.emit('eraseAll', eraseAllObject);
         this.eraseAllRemote(eraseAllObject);
@@ -225,11 +190,11 @@ AFRAME.registerComponent('texture-painter', {
             drawObject.lastY = this.lastY;
             drawObject.x = x;
             drawObject.y = y;
-            drawObject.color = this.color;
+            drawObject.color = tools.color;
             drawObject.room = room;
-            drawObject.board = boardId;
-            drawObject.size = Number(this.size);
-            drawObject.clearing = this.clearing;
+            drawObject.board = this.boardId;
+            drawObject.size = Number(tools.size);
+            drawObject.clearing = tools.clearing;
             socket.emit('draw', drawObject);
             this.drawRemote(drawObject);
             this.lastX = x;
@@ -264,6 +229,7 @@ AFRAME.registerComponent('texture-painter', {
 
         if ( intersects.length > 0 && intersects[ 0 ].uv ) {
 
+            selectBoard(this.boardId);
             this.disableLookControls();
 
             var uv = intersects[ 0 ].uv;

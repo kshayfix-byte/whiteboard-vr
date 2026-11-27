@@ -38,7 +38,11 @@
         </div>
       </div>
     </div>
-    <canvas width="1024" height="512" id="canvas"></canvas>
+    <div class="board-tabs" id="board-tabs" role="tablist" aria-label="Whiteboards">
+      <div class="board-tab-list" id="board-tab-list"></div>
+      <button id="add-board" class="add-board" title="Add a new whiteboard to this room">+ Add whiteboard</button>
+    </div>
+    <div id="canvas-holder"></div>
     <div class="toolbar">
       <div>
         Colour: <input id="color-picker" type="color" value="#000000">

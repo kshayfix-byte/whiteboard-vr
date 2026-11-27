@@ -29,6 +29,11 @@ Try it yourself: [https://whiteboard-vr.herokuapp.com](https://whiteboard-vr.her
 - **Export image** downloads the board as a PNG, in 2D (toolbar) and in VR (the green boxes left of the board, or the buttons in the top corner outside VR).
 - **Naming in a headset:** browsers can't show a text box inside VR. So Save on an unnamed board, or Rename, opens a small 2D window (`name.html`) with a name field and a Save button. If the browser won't open a window, the page leaves VR and shows the normal name box instead, and you press **VR** to go back in.
 - **Backup and restore:** whiteboards that have never been saved are backed up every few seconds to `./data/drafts/`. If the server stops before they're saved (a crash or a restart), the next time you open the app it lists them by name and last change. You can restore them one by one, restore all, or discard them. Restored whiteboards still need a name and a Save. **Restore unsaved** in the toolbar brings the list back later.
+- **Multiple whiteboards:** a room can hold several whiteboards (up to 50). **+ Add whiteboard** creates a new one with a temporary name for everyone in the room.
+  - 2D page: each whiteboard is a tab above the board. Click a tab to switch; Save, Rename, Export image and Erase act on the open tab. The address bar keeps `&board=<id>` so a link opens that board.
+  - VR: every whiteboard is in the scene. The first stays in front of you; new ones appear on a ring around you (left, right, then behind). The board you point at (or draw on) is the **selected** one, with an orange frame and `>` in its name tag; the green Save / Rename / Export / Erase All buttons act on it. **Next board** (right column) cycles the selection, and outside a headset the drop-down in the top corner does the same.
+  - Colour, size and eraser are shared by all boards.
+  - If a backup can't go back to its old spot because that board has content, it comes back as an extra whiteboard in the same room.
 - Saved boards are JSON files in `./data` (change it with the `DATA_DIR` environment variable). Back up that folder to keep your boards.
 - API: `GET /api/boards` lists saved boards. `GET /api/boards/<room>` shows the whiteboards in a room. `GET /api/recovery`, `POST /api/recovery/restore` and `POST /api/recovery/discard` (body `{"ids": [...]}`) handle backups.
 

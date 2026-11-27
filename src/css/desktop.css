@@ -211,3 +211,40 @@ button:disabled, button:disabled:hover {
     border: solid gray 2px;
     color: gray;
 }
+
+/* Board tabs (multiple whiteboards in a room) */
+.board-tabs {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 3% 0 3%;
+    font-family: sans-serif;
+    overflow-x: auto;
+}
+.board-tab-list {
+    display: flex;
+    gap: 6px;
+    flex-wrap: nowrap;
+}
+.board-tabs button {
+    margin: 0;
+    white-space: nowrap;
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.board-tab.temporary {
+    font-style: italic;
+}
+.board-tab.unsaved::after {
+    content: " \2022";
+    color: #c0392b;
+}
+.board-tab.active, .board-tab.active:hover {
+    background: rgb(3, 181, 148);
+    border-color: rgb(3, 181, 148);
+    color: white;
+}
+.board-tabs .add-board {
+    border-style: dashed;
+}
