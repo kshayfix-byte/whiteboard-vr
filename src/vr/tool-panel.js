@@ -303,6 +303,12 @@ export function createToolPanel(options) {
         onModeChange: (fn) => listeners.push(fn),
         bringHere: bringHere,
         backToStart: backToStart,
+        // After a jump (e.g. into a 360-degree board): put the panel in front
+        // of the user straight away, unless it's on the wrist or set to Stay.
+        jumpHere: () => {
+            if (mode !== 'follow' || !scene.is('vr-mode')) return;
+            setTimeout(() => jumpTo(spotInFront(head())), 0);
+        },
         // For tests.
         update: update
     };

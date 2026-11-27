@@ -11,11 +11,12 @@ require('./components/room-number.component');
 require('./components/vr-button.component');
 import { createSaveControls } from './save-controls';
 import { createRecoveryUI } from './recovery-ui';
-import { normalizeRoom, BOARD_SIZES, describeSize, presetFor } from './board-client';
+import { normalizeRoom, BOARD_SIZES, describeSize, presetFor, isWrapBoard, describeWrapSize } from './board-client';
 import {
     socket, room, initialBoard, tools, onToolChange, selectedBoard, selectBoard, onSelect
 } from './vr/session';
-import { layoutBoards, describePose, boardMetres } from './vr/layout';
+import { layoutBoards, describePose, boardMetres, insideWrap } from './vr/layout';
+import { wrapMetres } from './vr/wrap-surface';
 import { createBoardMover } from './vr/board-mover';
 import { createLocomotion } from './vr/locomotion';
 import { reachMode, setReachMode, onReachChange } from './vr/reach';
@@ -27,7 +28,7 @@ const SELECTED_FRAME_COLOR = '#FFA500';
 const HELD_FRAME_COLOR = '#3BA3FF';
 
 // ---- Whiteboards in the scene: one entity per board in the room ----
-const boardEls = {};   // id -> { root, plane, frame, label, labelEl, width, height, pose }
+const boardEls = {};   // id -> { root, plane, frame, frameParts, labels, labelEl, width, height, shape, pose }
 let roomBoards = [];   // roomInfo.boards, oldest first
 let mover = null;      // moves boards by hand (vr/board-mover.js)
 
@@ -41,8 +42,8 @@ function withPainter(id, fn) {
     const entry = boardEls[id];
     if (!entry) return;
     const p = entry.plane.components['texture-painter'];
-    // The component object exists before its init() has run; _canvas is set in init.
-    if (p && p._canvas) fn(p);
+    // The component object exists before its init() has run; `ready` is set in init.
+    if (p && p.ready) fn(p);
     else entry.plane.addEventListener('loaded', () => fn(entry.plane.components['texture-painter']), { once: true });
 }
 
@@ -59,7 +60,7 @@ function placeBoards() {
     Object.keys(boardEls).forEach((id) => { if (ids.indexOf(id) === -1) ids.push(id); });
     const list = ids.map((id) => {
         const info = roomBoards.find((b) => b.id === id);
-        return { width: boardEls[id].width, height: boardEls[id].height, pose: info && info.pose };
+        return { width: boardEls[id].width, height: boardEls[id].height, shape: boardEls[id].shape, pose: info && info.pose };
     });
     const poses = layoutBoards(list);
     ids.forEach((id, i) => {
@@ -77,6 +78,7 @@ function sizeBoardEl(entry, width, height) {
     const m = boardMetres(width, height);
     entry.width = width;
     entry.height = height;
+    if (entry.shape === 'cylinder') return; // fixed size, built in createWrapBoardEl
     entry.plane.setAttribute('width', m.w);
     entry.plane.setAttribute('height', m.h);
     entry.frame.setAttribute('width', m.w + 0.06);
@@ -84,7 +86,78 @@ function sizeBoardEl(entry, width, height) {
     entry.labelEl.setAttribute('position', '0 ' + ((m.h + 0.05) / 2 + 0.045) + ' 0');
 }
 
-function createBoardEl(id, width, height) {
+// A name tag: a white strip with the board's name on it.
+function createLabel() {
+    const label = document.createElement('a-entity');
+    const labelBack = document.createElement('a-plane');
+    labelBack.setAttribute('width', 0.5);
+    labelBack.setAttribute('height', 0.055);
+    labelBack.setAttribute('material', 'color: #FFFFFF; opacity: 0.85; transparent: true');
+    const labelText = document.createElement('a-text');
+    labelText.setAttribute('align', 'center');
+    labelText.setAttribute('color', '#222');
+    labelText.setAttribute('width', 0.5);
+    labelText.setAttribute('wrap-count', 30);
+    labelText.setAttribute('position', '0 0 0.002');
+    labelText.setAttribute('value', '');
+    label.appendChild(labelBack);
+    label.appendChild(labelText);
+    return { el: label, text: labelText, back: labelBack };
+}
+
+// A 360-degree board: a round wall you stand inside (see vr/wrap-surface.js).
+// Its "frame" is a rim round the top and bottom edges; its name tag is on the
+// front of the wall, once facing in and once facing out.
+function createWrapBoardEl(id, width, height) {
+    const container = document.getElementById('boards');
+    const m = wrapMetres(width, height);
+
+    const root = document.createElement('a-entity');
+    root.setAttribute('data-board', id);
+
+    const wall = document.createElement('a-entity');
+    wall.setAttribute('class', 'hittable');
+    wall.setAttribute('texture-painter', { board: id, width: width, height: height, shape: 'cylinder' });
+    wall.setAttribute('intersection-visual', { color: tools.clearing ? (tools.eraserColor || 'pink') : tools.color, size: tools.size });
+
+    const frame = document.createElement('a-entity');
+    const frameParts = [-1, 1].map((side) => {
+        const rim = document.createElement('a-torus');
+        rim.setAttribute('radius', m.radius + 0.015);
+        rim.setAttribute('radius-tubular', 0.012);
+        rim.setAttribute('segments-radial', 8);
+        rim.setAttribute('segments-tubular', 128);
+        rim.setAttribute('rotation', '90 0 0');
+        rim.setAttribute('position', '0 ' + (side * (m.h / 2 + 0.012)) + ' 0');
+        rim.setAttribute('material', 'color: ' + FRAME_COLOR + '; roughness: 0.6; metalness: 0.8');
+        frame.appendChild(rim);
+        return rim;
+    });
+
+    const inside = createLabel();
+    inside.el.setAttribute('position', '0 ' + (m.h / 2 + 0.07) + ' ' + (-(m.radius - 0.02)));
+    const outside = createLabel();
+    outside.el.setAttribute('position', '0 ' + (m.h / 2 + 0.07) + ' ' + (-(m.radius + 0.06)));
+    outside.el.setAttribute('rotation', '0 180 0');
+    outside.el.setAttribute('scale', '2.5 2.5 2.5');  // read from across the room
+    outside.el.setAttribute('position', '0 ' + (m.h / 2 + 0.12) + ' ' + (-(m.radius + 0.06)));
+
+    root.appendChild(frame);
+    root.appendChild(wall);
+    root.appendChild(inside.el);
+    root.appendChild(outside.el);
+    container.appendChild(root);
+
+    boardEls[id] = {
+        root: root, plane: wall, frame: frame, frameParts: frameParts, shape: 'cylinder',
+        labels: [inside, outside], labelEl: inside.el, width: width, height: height
+    };
+    placeBoards();
+    return boardEls[id];
+}
+
+function createBoardEl(id, width, height, shape) {
+    if (shape === 'cylinder') return createWrapBoardEl(id, width || 8000, height || 1800);
     const container = document.getElementById('boards');
     width = width || 1500;
     height = height || 1000;
@@ -105,27 +178,14 @@ function createBoardEl(id, width, height) {
 
     // Name tag above the board (kept small so it fits between the room
     // number and the size buttons on the first board).
-    const label = document.createElement('a-entity');
-    const labelBack = document.createElement('a-plane');
-    labelBack.setAttribute('width', 0.5);
-    labelBack.setAttribute('height', 0.055);
-    labelBack.setAttribute('material', 'color: #FFFFFF; opacity: 0.85; transparent: true');
-    const labelText = document.createElement('a-text');
-    labelText.setAttribute('align', 'center');
-    labelText.setAttribute('color', '#222');
-    labelText.setAttribute('width', 0.5);
-    labelText.setAttribute('wrap-count', 30);
-    labelText.setAttribute('position', '0 0 0.002');
-    labelText.setAttribute('value', '');
-    label.appendChild(labelBack);
-    label.appendChild(labelText);
+    const label = createLabel();
 
     root.appendChild(frame);
     root.appendChild(plane);
-    root.appendChild(label);
+    root.appendChild(label.el);
     container.appendChild(root);
 
-    boardEls[id] = { root: root, plane: plane, frame: frame, label: labelText, labelBack: labelBack, labelEl: label };
+    boardEls[id] = { root: root, plane: plane, frame: frame, frameParts: [frame], shape: 'flat', labels: [label], labelEl: label.el };
     sizeBoardEl(boardEls[id], width, height);
     placeBoards();
     return boardEls[id];
@@ -147,11 +207,14 @@ function paintBoardEl(id) {
     if (!entry) return;
     const info = roomBoards.find((b) => b.id === id);
     const selected = id === selectedBoard();
-    const name = info ? info.name : '';
-    entry.label.setAttribute('value', (selected ? '> ' : '') + shortName(name) + (info && !info.named ? ' (unsaved)' : ''));
-    entry.labelBack.setAttribute('material', 'color', selected ? '#FFE0A6' : '#FFFFFF');
+    const name = (entry.shape === 'cylinder' ? '360: ' : '') + (info ? info.name : '');
+    entry.labels.forEach((label) => {
+        label.text.setAttribute('value', (selected ? '> ' : '') + shortName(name) + (info && !info.named ? ' (unsaved)' : ''));
+        label.back.setAttribute('material', 'color', selected ? '#FFE0A6' : '#FFFFFF');
+    });
     const held = mover && mover.isHeld(id);
-    entry.frame.setAttribute('material', 'color', held ? HELD_FRAME_COLOR : selected ? SELECTED_FRAME_COLOR : FRAME_COLOR);
+    const color = held ? HELD_FRAME_COLOR : selected ? SELECTED_FRAME_COLOR : FRAME_COLOR;
+    entry.frameParts.forEach((part) => part.setAttribute('material', 'color', color));
 }
 
 // Keep every board's pen marker in step with the shared pen settings.
@@ -163,6 +226,9 @@ onToolChange(() => {
 });
 
 window.addEventListener('DOMContentLoaded', () => {
+    // "Go inside" button for 360-degree boards; set further down, once the
+    // moving code exists.
+    let updateInsideButton = function () {};
     const statusEl = document.getElementById('vr-save-status');
     const sceneStatus = document.getElementById('vr-status-text');
     const saveAllButton = document.getElementById('vr-save-all-box');
@@ -279,7 +345,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
     socket.on('boardState', (state) => {
         if (normalizeRoom(state.room) !== room) return;
-        if (!boardEls[state.board]) createBoardEl(state.board, state.width, state.height);
+        if (!boardEls[state.board]) createBoardEl(state.board, state.width, state.height, state.shape);
         else resizeBoardEl(state.board, state.width || 1500, state.height || 1000);
         withPainter(state.board, (p) => p.loadState(state));
         if (state.board === selectedBoard()) updateSizeLabel();
@@ -300,13 +366,14 @@ window.addEventListener('DOMContentLoaded', () => {
     socket.on('connect', join);
     if (socket.connected) join();
 
-    function addBoard() {
-        socket.emit('addBoard', { room: room }, (result) => {
+    function addBoard(shape) {
+        socket.emit('addBoard', { room: room, shape: shape === 'cylinder' ? 'cylinder' : 'flat' }, (result) => {
             if (result && result.ok) {
                 selectBoard(result.board);
                 const entry = boardEls[result.board];
                 const where = entry && entry.pose ? ' ' + describePose(entry.pose) : '';
-                controls.setStatus('Added \u201c' + result.name + '\u201d' + where);
+                controls.setStatus('Added ' + (result.shape === 'cylinder' ? '360 board ' : '') + '\u201c' + result.name + '\u201d' + where +
+                    (result.shape === 'cylinder' ? '. Press Go inside to step into it.' : ''));
             } else {
                 controls.setStatus((result && result.error) || 'Could not add a whiteboard.', true);
             }
@@ -320,6 +387,20 @@ window.addEventListener('DOMContentLoaded', () => {
     function updateSizeLabel() {
         const entry = boardEls[selectedBoard()];
         if (!entry) return;
+        if (entry.shape === 'cylinder') {
+            const wrapText = describeWrapSize(entry.width, entry.height);
+            if (sizeLabel) sizeLabel.setAttribute('value', '360: ' + wrapText.replace('\u00d7', 'x'));
+            if (sizeSelect) {
+                sizeSelect.value = 'custom';
+                sizeSelect.disabled = true;
+                const c = sizeSelect.querySelector('option[value="custom"]');
+                if (c) c.textContent = '360\u00b0 board (' + wrapText + ')';
+            }
+            updateInsideButton();
+            return;
+        }
+        if (sizeSelect) sizeSelect.disabled = false;
+        updateInsideButton();
         const preset = presetFor(entry.width, entry.height);
         const text = describeSize(entry.width, entry.height);
         // The headset font has no × sign, so use a plain x there.
@@ -345,6 +426,10 @@ window.addEventListener('DOMContentLoaded', () => {
     function nextSize() {
         const entry = boardEls[selectedBoard()];
         if (!entry) return;
+        if (entry.shape === 'cylinder') {
+            showInScene('360 boards have a fixed size (' + describeWrapSize(entry.width, entry.height).replace('\u00d7', 'x') + ').');
+            return;
+        }
         const index = BOARD_SIZES.findIndex((p) => p.width === entry.width && p.height === entry.height);
         resizeSelected(BOARD_SIZES[(index + 1) % BOARD_SIZES.length]);
     }
@@ -392,6 +477,7 @@ window.addEventListener('DOMContentLoaded', () => {
         size: (id) => (boardEls[id] ? boardMetres(boardEls[id].width, boardEls[id].height) : null),
         selected: selectedBoard,
         select: selectBoard,
+        canGrab: (id) => !(boardEls[id] && boardEls[id].shape === 'cylinder'),
         onLocalPose: (id, pose) => {
             setLocalPose(id, pose);
             updateMoveState();
@@ -483,6 +569,57 @@ window.addEventListener('DOMContentLoaded', () => {
     }
     toolPanel.onModeChange(paintPanel);
     paintPanel();
+
+    // ---- Going into (and out of) a 360-degree board ----
+    const insideLabel = document.getElementById('vr-inside-label');
+    const insideBox = document.getElementById('vr-inside-box');
+    const insideButton = document.getElementById('vr-go-inside');
+
+    function selectedWrap() {
+        const entry = boardEls[selectedBoard()];
+        return entry && entry.shape === 'cylinder' && entry.pose ? entry : null;
+    }
+
+    function headInside(entry) {
+        const h = locomotion.headPosition();
+        return insideWrap(entry.pose, entry.width, h.x, h.z);
+    }
+
+    function goInside() {
+        const entry = selectedWrap();
+        if (!entry) {
+            showInScene('Select a 360 board first (point at it, or use Next board).');
+            return;
+        }
+        if (headInside(entry)) {
+            locomotion.backToStart();
+            toolPanel.backToStart();
+            showInScene('Back at the start.');
+        } else {
+            locomotion.goTo(entry.pose.position[0], entry.pose.position[2], entry.pose.rotationY || 0);
+            toolPanel.jumpHere();
+            showInScene('You are inside the 360 board. Draw all the way round you. Go inside again (or Back to start) steps out.');
+        }
+        updateInsideButton();
+    }
+
+    updateInsideButton = function () {
+        const entry = selectedWrap();
+        const inside = !!entry && headInside(entry);
+        const text = inside ? 'Step out' : 'Go inside';
+        if (insideLabel) insideLabel.setAttribute('value', text);
+        if (insideBox) insideBox.setAttribute('vr-button', 'enabled', !!entry);
+        if (insideButton) {
+            insideButton.disabled = !entry;
+            insideButton.textContent = entry ? text + ' (360\u00b0 board)' : 'Go inside';
+            insideButton.title = entry ? 'Jump into the middle of the selected 360\u00b0 board, or back out to the start'
+                : 'Select a 360\u00b0 board to step inside it';
+        }
+    };
+    onSelect(updateInsideButton);
+    socket.on('roomInfo', () => setTimeout(updateInsideButton, 0));
+    if (insideButton) insideButton.addEventListener('click', goInside);
+    updateInsideButton();
     window.whiteboardToolPanel = toolPanel; // for testing from the browser console
     setReachMode(reachMode()); // apply the remembered setting to the controllers
 
@@ -492,7 +629,8 @@ window.addEventListener('DOMContentLoaded', () => {
             : 'Tip: push a thumbstick forward and let go to teleport. Grip moves a whiteboard. B or Y brings the tool panel.'), 1500);
     });
 
-    document.getElementById('vr-add-board').addEventListener('click', addBoard);
+    document.getElementById('vr-add-board').addEventListener('click', () => addBoard('flat'));
+    document.getElementById('vr-add-wrap-board').addEventListener('click', () => addBoard('cylinder'));
 
     // Mirror on-screen status messages into the scene so they're visible in a headset.
     if (statusEl && window.MutationObserver) {
@@ -591,7 +729,7 @@ window.addEventListener('DOMContentLoaded', () => {
         } else if (action === 'save-all') {
             controls.saveAll();
         } else if (action === 'add-board') {
-            addBoard();
+            addBoard('flat');
         } else if (action === 'remove-board') {
             if (selectedBoard()) removeGuard.press(selectedBoard());
         } else if (action === 'next-board') {
@@ -607,6 +745,11 @@ window.addEventListener('DOMContentLoaded', () => {
         } else if (action === 'back-to-start') {
             locomotion.backToStart();
             toolPanel.backToStart();
+            updateInsideButton();
+        } else if (action === 'add-wrap-board') {
+            addBoard('cylinder');
+        } else if (action === 'go-inside') {
+            goInside();
         } else if (action === 'panel-mode') {
             toolPanel.nextMode();
         } else if (action === 'erase-all') {

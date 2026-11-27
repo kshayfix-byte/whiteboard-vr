@@ -1,12 +1,18 @@
 // One whiteboard in the VR scene. Each board entity has its own canvas
 // (texture) and listens only to drawings for its own board id. Pen settings
 // are shared by all boards (see ../vr/session.js).
+//
+// shape "flat": the entity is an a-plane and this component paints its
+// texture. shape "cylinder": a 360-degree board; this component builds the
+// wall itself (see ../vr/wrap-surface.js), and strokes may cross the join
+// between the canvas's left and right edges.
 import {
     DEFAULT_BACKGROUND, normalizeRoom, clearCanvas, drawSegment, replayBoard,
-    exportFilename, downloadCanvas, sizeCanvas
+    exportFilename, downloadCanvas, sizeCanvas, unwrapX
 } from '../board-client';
 import { socket, room, tools, selectBoard } from '../vr/session';
 import { nearestHit } from '../vr/reach';
+import { createWrapSurface } from '../vr/wrap-surface';
 
 // Drawing from far away: hand shake grows with distance, so strokes drawn
 // from more than STEADY_FROM metres are smoothed a little (more the further
@@ -18,9 +24,11 @@ AFRAME.registerComponent('texture-painter', {
     schema: {
         board: { type: 'string', default: 'main' },
         width: { type: 'int', default: 1500 },
-        height: { type: 'int', default: 1000 }
+        height: { type: 'int', default: 1000 },
+        shape: { type: 'string', default: 'flat' }
     },
     init: function () {
+        this.wrapBoard = this.data.shape === 'cylinder';
 
         this.id = Math.floor(Math.random() * 100000000);
         this.boardId = this.data.board;
@@ -59,6 +67,30 @@ AFRAME.registerComponent('texture-painter', {
         })
         
 
+        this.raycaster = new THREE.Raycaster();
+        this.mouse = new THREE.Vector2();
+        this.onClickPosition = new THREE.Vector2();
+        this.renderer = this.el.sceneEl.renderer;
+
+        // The board manager (vr.js) joins the room and passes this board's
+        // state in with loadState(). Live strokes come straight from the socket.
+        this.onRemoteDraw = (obj) => {
+            if (obj.id != this.id) this.drawRemote(obj);
+        };
+        this.onRemoteEraseAll = (obj) => {
+            if (obj.id != this.id) this.eraseAllRemote(obj);
+        };
+        socket.on('remoteDraw', this.onRemoteDraw);
+        socket.on('remoteEraseAll', this.onRemoteEraseAll);
+
+        if (this.wrapBoard) {
+            this.surface = createWrapSurface(this.data.width, this.data.height);
+            this.surface.clear(this.background);
+            this.el.setObject3D('mesh', this.surface.group);
+            this.ready = true;
+            return;
+        }
+
         // Clamp + linear filtering without mipmaps lets the texture keep the
         // canvas's real size. (With the original repeat wrapping, three.js
         // shrank every board to a power of two, e.g. 1500x1000 to 1024x1024,
@@ -76,12 +108,6 @@ AFRAME.registerComponent('texture-painter', {
         useMaterial();
         this.el.addEventListener('object3dset', (evt) => { if (evt.detail.type === 'mesh') useMaterial(); });
 
-        this.raycaster = new THREE.Raycaster();
-        this.mouse = new THREE.Vector2();
-        this.onClickPosition = new THREE.Vector2();
-
-        this.renderer = this.el.sceneEl.renderer;
-
         this.parentTexture = planeTexture;
         this._parentTexture = [];
 
@@ -96,22 +122,29 @@ AFRAME.registerComponent('texture-painter', {
         clearCanvas(this._context2D, this._canvas, this.background);
 
         this.parentTexture.needsUpdate = true;
-
-        // The board manager (vr.js) joins the room and passes this board's
-        // state in with loadState(). Live strokes come straight from the socket.
-        this.onRemoteDraw = (obj) => {
-            if (obj.id != this.id) this.drawRemote(obj);
-        };
-        this.onRemoteEraseAll = (obj) => {
-            if (obj.id != this.id) this.eraseAllRemote(obj);
-        };
-        socket.on('remoteDraw', this.onRemoteDraw);
-        socket.on('remoteEraseAll', this.onRemoteEraseAll);
-
+        this.ready = true;
     },
     remove: function () {
         socket.off('remoteDraw', this.onRemoteDraw);
         socket.off('remoteEraseAll', this.onRemoteEraseAll);
+        if (this.surface) {
+            this.el.removeObject3D('mesh');
+            this.surface.dispose();
+        }
+    },
+    // Size of the board's canvas in pixels.
+    boardWidth: function () {
+        return this.surface ? this.surface.width : this._canvas.width;
+    },
+    boardHeight: function () {
+        return this.surface ? this.surface.height : this._canvas.height;
+    },
+    // Canvas point { x, y } for a pointer hit on this board, or null.
+    pointFromHit: function (hit) {
+        if (!hit) return null;
+        if (this.surface) return this.surface.pointFromHit(hit);
+        if (!hit.uv) return null;
+        return { x: hit.uv.x * this._canvas.width, y: (1 - hit.uv.y) * this._canvas.height };
     },
     mine: function (obj) {
         return obj && room == normalizeRoom(obj.room) && (obj.board || 'main') === this.boardId;
@@ -119,6 +152,7 @@ AFRAME.registerComponent('texture-painter', {
     // The board was resized: give the canvas the new size (this wipes it;
     // loadState() redraws it right after) and re-upload the texture.
     resize: function (width, height) {
+        if (this.surface) return; // 360-degree boards have a fixed size
         if (!sizeCanvas(this._canvas, width, height)) return;
         this.lastX = null;
         this.lastY = null;
@@ -127,10 +161,16 @@ AFRAME.registerComponent('texture-painter', {
         this.parentTexture.needsUpdate = true;
     },
     loadState: function (state) {
-        if (state.width && state.height) this.resize(state.width, state.height);
+        this.lastX = null;
+        this.lastY = null;
         this.background = state.background || DEFAULT_BACKGROUND;
-        replayBoard(this._context2D, this._canvas, state);
-        this.parentTexture.needsUpdate = true;
+        if (this.surface) {
+            this.surface.replay(state);
+        } else {
+            if (state.width && state.height) this.resize(state.width, state.height);
+            replayBoard(this._context2D, this._canvas, state);
+            this.parentTexture.needsUpdate = true;
+        }
         this.boardName = state.name || '';
         this.loaded = true;
     },
@@ -138,7 +178,10 @@ AFRAME.registerComponent('texture-painter', {
         if (!this.mine(remoteDrawObject)) {
             return;
         }
-        if (remoteDrawObject.lastX != null && remoteDrawObject.lastY != null) {
+        if (remoteDrawObject.lastX == null || remoteDrawObject.lastY == null) return;
+        if (this.surface) {
+            this.surface.drawSegment(remoteDrawObject);
+        } else {
             drawSegment(this._context2D, remoteDrawObject, this.background);
             this.parentTexture.needsUpdate = true;
         }
@@ -147,11 +190,17 @@ AFRAME.registerComponent('texture-painter', {
         this.boardName = name || '';
     },
     // Download the board as a PNG via the browser's normal download.
+    // A 360-degree board exports as one wide panorama.
     exportImage: function() {
-        downloadCanvas(this._canvas, exportFilename(this.boardName, room));
+        const canvas = this.surface ? this.surface.toCanvas() : this._canvas;
+        downloadCanvas(canvas, exportFilename(this.boardName, room));
     },
     eraseAllRemote: function(remoteEraseAllObject) {
         if (!this.mine(remoteEraseAllObject)) {
+            return;
+        }
+        if (this.surface) {
+            this.surface.clear(this.background);
             return;
         }
         clearCanvas(this._context2D, this._canvas, this.background);
@@ -175,11 +224,17 @@ AFRAME.registerComponent('texture-painter', {
             this.hoverSelected = true;
             selectBoard(this.boardId);
         }
+        const point = this.pointFromHit(intersection);
+        if (!point) {
+            // e.g. the outside of a 360-degree board: no drawing there
+            this.lastX = null;
+            this.lastY = null;
+            return;
+        }
         if (this.triggerdown) {
             selectBoard(this.boardId);
-            var uv = intersection.uv;
-            var x = uv.x * this._canvas.width;
-            var y = (1 - uv.y) * this._canvas.height;
+            var x = this.wrapX(point.x);
+            var y = point.y;
             if (this.lastX != null && intersection.distance > STEADY_FROM) {
                 var follow = Math.max(MIN_FOLLOW, STEADY_FROM / intersection.distance);
                 x = this.lastX + (x - this.lastX) * follow;
@@ -192,6 +247,10 @@ AFRAME.registerComponent('texture-painter', {
             this.lastX = null;
             this.lastY = null;
         }
+    },
+    // On a 360-degree board, keep x next to the stroke's last point (see unwrapX).
+    wrapX: function (x) {
+        return this.surface ? unwrapX(x, this.lastX, this.surface.width) : x;
     },
     cameraSetActive: function() {
         this.camera = this.el.sceneEl.camera;
@@ -232,8 +291,8 @@ AFRAME.registerComponent('texture-painter', {
             drawObject.board = this.boardId;
             drawObject.size = Number(tools.size);
             drawObject.clearing = tools.clearing;
-            drawObject.bw = this._canvas.width;   // board size this stroke was drawn on
-            drawObject.bh = this._canvas.height;
+            drawObject.bw = this.boardWidth();   // board size this stroke was drawn on
+            drawObject.bh = this.boardHeight();
             socket.emit('draw', drawObject);
             this.drawRemote(drawObject);
             this.lastX = x;
@@ -250,11 +309,9 @@ AFRAME.registerComponent('texture-painter', {
 
         var intersects = this.getIntersects( this.onClickPosition, [this.el.getObject3D('mesh')] );
 
-        if ( intersects.length > 0 && intersects[ 0 ].uv ) {
-
-            var uv = intersects[ 0 ].uv;
-            intersects[ 0 ].object.material.map.transformUv( uv );
-            this._draw( uv.x * this._canvas.width, uv.y * this._canvas.height);
+        var point = intersects.length > 0 && this.pointFromHit(intersects[ 0 ]);
+        if ( point ) {
+            this._draw( this.wrapX(point.x), point.y );
         }
 
     },
@@ -266,16 +323,14 @@ AFRAME.registerComponent('texture-painter', {
 
         var intersects = this.getIntersects( this.onClickPosition, [this.el.getObject3D('mesh')] );
 
-        if ( intersects.length > 0 && intersects[ 0 ].uv ) {
+        var point = intersects.length > 0 && this.pointFromHit(intersects[ 0 ]);
+        if ( point ) {
 
             selectBoard(this.boardId);
             this.disableLookControls();
 
-            var uv = intersects[ 0 ].uv;
-            intersects[ 0 ].object.material.map.transformUv( uv );
-
-            this.lastX = uv.x * this._canvas.width;
-            this.lastY = uv.y * this._canvas.height;
+            this.lastX = point.x;
+            this.lastY = point.y;
 
         }
     },
@@ -300,7 +355,7 @@ AFRAME.registerComponent('texture-painter', {
 
         this.raycaster.setFromCamera( this.mouse, this.camera );
 
-        return this.raycaster.intersectObjects( objects );
+        return this.raycaster.intersectObjects( objects, true );
 
     }
 

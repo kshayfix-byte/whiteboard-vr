@@ -22,27 +22,78 @@ function strokeLine(context2D, x0, y0, x1, y1, color, size) {
     context2D.stroke();
 }
 
+// ---- 360-degree (wraparound) boards ----
+// A wraparound board's canvas is the inside of a cylinder unrolled: its left
+// and right edges are the same place. Strokes may use x values past either
+// edge (a stroke that crosses the join keeps going), so everything drawn on
+// such a board goes through wrapCopies(): it is drawn once where it is and
+// once a full turn to each side, and the canvas clips what falls outside.
+// New op types (text labels, highlighter) should draw through wrapCopies()
+// too, so they also work across the join.
+
+// The x shifts to draw something spanning minX..maxX at on a board that wraps
+// every `wrap` pixels (0 or missing = a flat board: just [0]).
+export function wrapCopies(minX, maxX, wrap) {
+    if (!wrap) return [0];
+    const base = -Math.floor(minX / wrap) * wrap; // brings minX into 0..wrap
+    return [base - wrap, base, base + wrap];
+}
+
+// Bring an x drawn while moving round a wraparound board next to the
+// previous point, so a stroke over the join doesn't jump across the board.
+export function unwrapX(x, lastX, wrap) {
+    if (!wrap || lastX == null) return x;
+    while (x - lastX > wrap / 2) x -= wrap;
+    while (x - lastX < -wrap / 2) x += wrap;
+    return x;
+}
+
+function strokeWrapped(context2D, x0, y0, x1, y1, color, size, wrap) {
+    wrapCopies(Math.min(x0, x1), Math.max(x0, x1), wrap).forEach((dx) => {
+        strokeLine(context2D, x0 + dx, y0, x1 + dx, y1, color, size);
+    });
+}
+
 // Draw a live `draw` message (the format clients send over the socket).
-export function drawSegment(context2D, obj, background) {
+// `wrap` is the board width for wraparound boards, otherwise leave it out.
+export function drawSegment(context2D, obj, background, wrap) {
     if (obj.lastX == null || obj.lastY == null) return;
     const color = obj.clearing ? (background || DEFAULT_BACKGROUND) : obj.color;
-    strokeLine(context2D, obj.lastX, obj.lastY, obj.x, obj.y, color, obj.size);
+    strokeWrapped(context2D, obj.lastX, obj.lastY, obj.x, obj.y, color, obj.size, wrap);
 }
 
 // Draw one stored op from the server. Unknown op types are skipped so that
 // adding new tools later won't break older pages.
-export function renderOp(context2D, op, background) {
+export function renderOp(context2D, op, background, wrap) {
     if (!op) return;
     if (op.type === 'stroke') {
         const color = op.erase ? (background || DEFAULT_BACKGROUND) : op.color;
-        strokeLine(context2D, op.x0, op.y0, op.x1, op.y1, color, op.size);
+        strokeWrapped(context2D, op.x0, op.y0, op.x1, op.y1, color, op.size, wrap);
     }
+}
+
+// The area an op or live draw message covers: { minX, maxX, minY, maxY }, or
+// null for types this page doesn't know. Used to redraw only the parts of a
+// wraparound board that changed.
+export function opBounds(op) {
+    if (!op) return null;
+    if (op.type === 'stroke' || op.type == null) {
+        const x0 = op.type ? op.x0 : op.lastX;
+        const y0 = op.type ? op.y0 : op.lastY;
+        const x1 = op.type ? op.x1 : op.x;
+        const y1 = op.type ? op.y1 : op.y;
+        if (x0 == null || y0 == null) return null;
+        const r = (Number(op.size) || 0) / 2 + 2;
+        return { minX: Math.min(x0, x1) - r, maxX: Math.max(x0, x1) + r, minY: Math.min(y0, y1) - r, maxY: Math.max(y0, y1) + r };
+    }
+    return null;
 }
 
 // Redraw the whole board from a `boardState` message.
 export function replayBoard(context2D, canvas, state) {
     clearCanvas(context2D, canvas, state.background);
-    (state.ops || []).forEach((op) => renderOp(context2D, op, state.background));
+    const wrap = isWrapBoard(state) ? canvas.width : 0;
+    (state.ops || []).forEach((op) => renderOp(context2D, op, state.background, wrap));
 }
 
 export function exportFilename(name, room) {
@@ -128,4 +179,22 @@ export function sizeCanvas(canvas, width, height) {
     canvas.width = width;
     canvas.height = height;
     return true;
+}
+
+// ---- Board shapes ----
+// "flat" boards are ordinary rectangles. "cylinder" boards are 360-degree
+// wraparound boards: the inside of a cylinder you stand in. They have a fixed
+// size: WRAP_WIDTH pixels all the way round (8 m, so about 1.27 m from the
+// middle to the wall) and WRAP_HEIGHT high. The server keeps the same
+// numbers (lib/board-store.js).
+export const WRAP_WIDTH = 8000;
+export const WRAP_HEIGHT = 1800;
+
+export function isWrapBoard(board) {
+    return !!board && board.shape === 'cylinder';
+}
+
+// "8 m around × 1.8 m high"
+export function describeWrapSize(width, height) {
+    return metres(width || WRAP_WIDTH) + ' m around \u00d7 ' + metres(height || WRAP_HEIGHT) + ' m high';
 }
