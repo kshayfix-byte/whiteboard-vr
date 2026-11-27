@@ -5,6 +5,7 @@ import {
 } from './board-client';
 import { createSaveControls } from './save-controls';
 import { createRecoveryUI } from './recovery-ui';
+import { createMultiClick } from './triple-click';
 
 function getParameterByName(name, url) {
     if (!url) url = window.location.href;
@@ -85,6 +86,7 @@ function boardFor(bid, width, height) {
 // Show one board and point Save / Rename / Export / Erase at it.
 function showBoard(bid) {
     if (!boards[bid]) return;
+    if (bid !== boardId) removeGuard.reset(); // only runs after load, once removeGuard exists
     boardId = bid;
     lastX = null;
     lastY = null;
@@ -100,6 +102,7 @@ function showBoard(bid) {
 }
 
 function renderTabs() {
+    updateRemoveButton();
     tabList.innerHTML = '';
     boardOrder.forEach((bid) => {
         const info = roomBoards.find((b) => b.id === bid) || { name: bid };
@@ -161,6 +164,54 @@ document.getElementById('add-board').addEventListener('click', () => {
             controls.setStatus((result && result.error) || 'Could not add a whiteboard.', true);
         }
     });
+});
+
+// ---- Remove whiteboard: needs three clicks in a row ----
+const removeButton = document.getElementById('remove-board');
+const REMOVE_LABEL = 'Remove whiteboard';
+const removeGuard = createMultiClick({
+    count: 3,
+    onProgress: (left) => {
+        removeButton.classList.add('arming');
+        removeButton.textContent = 'Click ' + left + ' more time' + (left === 1 ? '' : 's') + ' to remove';
+    },
+    onReset: () => {
+        removeButton.classList.remove('arming');
+        removeButton.textContent = REMOVE_LABEL;
+    },
+    onConfirm: (bid) => {
+        removeButton.classList.remove('arming');
+        removeButton.textContent = REMOVE_LABEL;
+        socket.emit('removeBoard', { room: room, board: bid }, (result) => {
+            if (result && result.ok) controls.setStatus('Removed “' + result.name + '”');
+            else controls.setStatus((result && result.error) || 'Could not remove the whiteboard.', true);
+        });
+    }
+});
+removeButton.addEventListener('click', () => { if (boardId) removeGuard.press(boardId); });
+
+function updateRemoveButton() {
+    const only = boardOrder.length <= 1;
+    removeButton.disabled = only;
+    removeButton.title = only ? 'The only whiteboard in a room can’t be removed'
+        : 'Removes this whiteboard for everyone. Click three times in a row.';
+}
+
+// Someone (maybe us) removed a board: drop its canvas, and if it was open,
+// move to the board before it (or the next one).
+socket.on('boardRemoved', (msg) => {
+    if (!msg || normalizeRoom(msg.room) !== room || !boards[msg.board]) return;
+    const index = boardOrder.indexOf(msg.board);
+    boards[msg.board].canvas.remove();
+    delete boards[msg.board];
+    boardOrder = boardOrder.filter((b) => b !== msg.board);
+    if (boardId === msg.board) {
+        boardId = null;
+        removeGuard.reset();
+        const next = boardOrder[Math.max(0, index - 1)];
+        if (next) showBoard(next);
+    }
+    renderTabs();
 });
 
 function eraseAllRemote(eraseAllRemoteObject) {

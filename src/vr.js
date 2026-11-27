@@ -16,6 +16,7 @@ import {
     socket, room, initialBoard, tools, onToolChange, selectedBoard, selectBoard, onSelect
 } from './vr/session';
 import { boardPose, describePose, BOARD_WIDTH } from './vr/layout';
+import { createMultiClick } from './triple-click';
 
 const FRAME_COLOR = '#acacac';
 const SELECTED_FRAME_COLOR = '#FFA500';
@@ -179,12 +180,58 @@ window.addEventListener('DOMContentLoaded', () => {
         });
         boardSelect.value = selectedBoard() || '';
         if (nextBoardButton) nextBoardButton.setAttribute('vr-button', 'enabled', roomBoards.length > 1);
+        if (removeBoardBox) removeBoardBox.setAttribute('vr-button', 'enabled', roomBoards.length > 1);
+        removeBoardButton.disabled = roomBoards.length <= 1;
         const info = roomBoards.find((b) => b.id === selectedBoard());
         document.title = (info ? info.name + ' - ' : '') + 'Whiteboard VR';
         scene.emit('board-renamed', { name: describeSelected() });
     }
 
+    // ---- Remove whiteboard: three presses in a row ----
+    const removeBoardBox = document.getElementById('vr-remove-board-box');
+    const removeLabel = document.getElementById('vr-remove-label');
+    const removeBoardButton = document.getElementById('vr-remove-board');
+    const REMOVE_TEXT = 'Remove board (x3)';
+    const removeGuard = createMultiClick({
+        count: 3,
+        onProgress: (left, id) => {
+            const info = roomBoards.find((b) => b.id === id);
+            const text = 'Remove \u201c' + shortName(info ? info.name : '') + '\u201d? Press ' + left + ' more time' + (left === 1 ? '' : 's');
+            showInScene(text);
+            if (removeLabel) removeLabel.setAttribute('value', 'Press ' + left + ' more');
+            removeBoardButton.classList.add('arming');
+            removeBoardButton.textContent = 'Click ' + left + ' more time' + (left === 1 ? '' : 's') + ' to remove';
+        },
+        onReset: () => {
+            if (removeLabel) removeLabel.setAttribute('value', REMOVE_TEXT);
+            removeBoardButton.classList.remove('arming');
+            removeBoardButton.textContent = 'Remove whiteboard';
+        },
+        onConfirm: (id) => {
+            removeGuard.reset();
+            socket.emit('removeBoard', { room: room, board: id }, (result) => {
+                if (result && result.ok) controls.setStatus('Removed \u201c' + result.name + '\u201d');
+                else controls.setStatus((result && result.error) || 'Could not remove the whiteboard.', true);
+            });
+        }
+    });
+    removeBoardButton.addEventListener('click', () => { if (selectedBoard()) removeGuard.press(selectedBoard()); });
+
+    socket.on('boardRemoved', (msg) => {
+        if (!msg || normalizeRoom(msg.room) !== room || !boardEls[msg.board]) return;
+        const index = roomBoards.findIndex((b) => b.id === msg.board);
+        boardEls[msg.board].root.parentNode.removeChild(boardEls[msg.board].root);
+        delete boardEls[msg.board];
+        roomBoards = roomBoards.filter((b) => b.id !== msg.board);
+        if (selectedBoard() === msg.board) {
+            const next = roomBoards[Math.max(0, index - 1)];
+            if (next) selectBoard(next.id);
+        }
+        refreshBoards();
+    });
+
     onSelect((id) => {
+        removeGuard.reset();
         controls.setBoard(id);
         refreshBoards();
     });
@@ -334,6 +381,8 @@ window.addEventListener('DOMContentLoaded', () => {
             controls.saveAll();
         } else if (action === 'add-board') {
             addBoard();
+        } else if (action === 'remove-board') {
+            if (selectedBoard()) removeGuard.press(selectedBoard());
         } else if (action === 'next-board') {
             nextBoard();
         } else if (action === 'erase-all') {

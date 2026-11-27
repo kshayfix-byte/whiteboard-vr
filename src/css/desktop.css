@@ -248,3 +248,9 @@ button:disabled, button:disabled:hover {
 .board-tabs .add-board {
     border-style: dashed;
 }
+
+.remove-board.arming, .remove-board.arming:hover {
+    border-color: #c0392b;
+    color: white;
+    background: #c0392b;
+}
