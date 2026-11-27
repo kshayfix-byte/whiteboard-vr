@@ -29,6 +29,15 @@
         </div>
       </div>
     </div>
+    <div class="overlay hidden" id="boards-overlay">
+      <div class="overlay-inner">
+        <h1>Saved boards</h1>
+        <div id="boards-list"></div>
+        <div class="start">
+          <button id="close-boards">Close</button>
+        </div>
+      </div>
+    </div>
     <canvas width="1024" height="512" id="canvas"></canvas>
     <div class="toolbar">
       <div>
@@ -38,7 +47,10 @@
       </div>
       <div>
         <div class="room">Room: <span id="room-number">CVC19</span></div>
-        <a class="button" id="save-board" href="#">Save board contents</a>
+        <div class="board-name" id="board-name" title="Boards are saved on the server automatically">Untitled board</div>
+        <button id="name-board">Name board</button>
+        <button id="saved-boards">Saved boards</button>
+        <button id="export-image">Export image</button>
         <button id="erase-all">Erase whole board</button>
         <button id="join-room">Join other room</button>
       </div>

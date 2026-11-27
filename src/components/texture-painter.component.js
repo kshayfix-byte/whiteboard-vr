@@ -1,4 +1,8 @@
 import io from 'socket.io-client';
+import {
+    DEFAULT_BACKGROUND, normalizeRoom, clearCanvas, drawSegment, replayBoard,
+    exportFilename, downloadCanvas
+} from '../board-client';
 
 function getParameterByName(name, url) {
     if (!url) url = window.location.href;
@@ -10,8 +14,8 @@ function getParameterByName(name, url) {
     return decodeURIComponent(results[2].replace(/\+/g, ' '));
 }
 
-let room = getParameterByName('room');
-if (room == null) {
+let room = normalizeRoom(getParameterByName('room'));
+if (!room) {
     room = Math.random().toString(36).substr(2, 5).toUpperCase();
     window.location.href = "vr.html?room="+room;
 }
@@ -42,7 +46,9 @@ AFRAME.registerComponent('texture-painter', {
         this.id = Math.floor(Math.random() * 100000000);
         this.color = this.data.color;
         this.size = this.data.size;
-        this.background = "#EEF8FD";
+        this.background = DEFAULT_BACKGROUND;
+        this.boardName = '';
+        this.loaded = false;
         this.clearing = false;
 
         this.el.sceneEl.addEventListener('camera-set-active', this.cameraSetActive.bind(this));
@@ -95,10 +101,27 @@ AFRAME.registerComponent('texture-painter', {
         this.parentTexture.image = this._canvas;
 
         // draw background
-        this._context2D.fillStyle = this.background;
-        this._context2D.fillRect(0, 0, this._canvas.width, this._canvas.height); 
+        clearCanvas(this._context2D, this._canvas, this.background);
 
         this.parentTexture.needsUpdate = true;
+
+        // Load the saved board now and again after any reconnect.
+        const join = () => socket.emit('join', { room: room });
+        socket.on('connect', join);
+        if (socket.connected) join();
+
+        socket.on('boardState', (state) => {
+            if (normalizeRoom(state.room) !== room) return;
+            this.background = state.background || DEFAULT_BACKGROUND;
+            replayBoard(this._context2D, this._canvas, state);
+            this.parentTexture.needsUpdate = true;
+            this.setBoardName(state.name);
+            this.loaded = true;
+        });
+
+        socket.on('boardRenamed', (msg) => {
+            if (normalizeRoom(msg.room) === room) this.setBoardName(msg.name);
+        });
     
         socket.on('remoteDraw', (remoteDrawObject) => {
             if (remoteDrawObject.id != this.id) {
@@ -114,31 +137,28 @@ AFRAME.registerComponent('texture-painter', {
 
     },
     drawRemote: function(remoteDrawObject) {
-        if (room != remoteDrawObject.room) {
+        if (room != normalizeRoom(remoteDrawObject.room)) {
             return;
         }
-        if (remoteDrawObject.lastX != null && remoteDrawObject.lastY != null) {            
-            this._context2D.beginPath();
-            this._context2D.strokeStyle = remoteDrawObject.color;
-            if (remoteDrawObject.clearing) {
-                this._context2D.strokeStyle = this.background;
-            }
-            this._context2D.lineJoin = 'round';
-            this._context2D.lineWidth = remoteDrawObject.size;
-            this._context2D.moveTo(remoteDrawObject.lastX, remoteDrawObject.lastY);
-            this._context2D.lineTo(remoteDrawObject.x, remoteDrawObject.y);
-            this._context2D.closePath();
-            this._context2D.stroke();
-            
+        if (remoteDrawObject.lastX != null && remoteDrawObject.lastY != null) {
+            drawSegment(this._context2D, remoteDrawObject, this.background);
             this.parentTexture.needsUpdate = true;
         }
     },
+    setBoardName: function(name) {
+        this.boardName = name || '';
+        document.title = (this.boardName ? this.boardName + ' - ' : '') + 'Whiteboard VR';
+        this.el.sceneEl.emit('board-renamed', { name: this.boardName });
+    },
+    // Download the board as a PNG via the browser's normal download.
+    exportImage: function() {
+        downloadCanvas(this._canvas, exportFilename(this.boardName, room));
+    },
     eraseAllRemote: function(remoteEraseAllObject) {
-        if (room != remoteEraseAllObject.room) {
+        if (room != normalizeRoom(remoteEraseAllObject.room)) {
             return;
         }
-        this._context2D.fillStyle = this.background;
-        this._context2D.fillRect(0, 0, this._canvas.width, this._canvas.height); 
+        clearCanvas(this._context2D, this._canvas, this.background);
         this.parentTexture.needsUpdate = true;
     },
     update: function() {
@@ -191,7 +211,8 @@ AFRAME.registerComponent('texture-painter', {
         this.eraseAllRemote(eraseAllObject);
     },
     _draw: function (x, y) {
-        if (this.lastX != null && this.lastY != null) {
+        // Don't draw until the saved board has loaded, so nothing gets painted over.
+        if (this.loaded && this.lastX != null && this.lastY != null) {
             var drawObject= {};
             drawObject.id = this.id;
             drawObject.lastX = this.lastX;
@@ -200,7 +221,7 @@ AFRAME.registerComponent('texture-painter', {
             drawObject.y = y;
             drawObject.color = this.color;
             drawObject.room = room;
-            drawObject.size = this.size;
+            drawObject.size = Number(this.size);
             drawObject.clearing = this.clearing;
             socket.emit('draw', drawObject);
             this.drawRemote(drawObject);

@@ -154,3 +154,33 @@ body{
 .hidden {
     display: none;
 }
+.board-name {
+    font-family: sans-serif;
+    font-size: 18px;
+    margin-left: 12px;
+    max-width: 260px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.board-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px 0;
+    border-bottom: 1px solid #ddd;
+}
+.board-row.current .board-title::after {
+    content: " (this board)";
+    color: gray;
+    font-weight: normal;
+}
+.board-title {
+    font-weight: bold;
+}
+.board-meta {
+    color: gray;
+    font-size: 14px;
+}

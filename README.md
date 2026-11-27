@@ -16,9 +16,17 @@ Try it yourself: [https://whiteboard-vr.herokuapp.com](https://whiteboard-vr.her
 
 1. Clone the project `git clone https://github.com/marlon360/whiteboard-vr.git`
 2. Navigate to directory `cd whiteboard-vr`
-3. Install dependencies `npm run install`
+3. Install dependencies `npm install`
 4. Build project `npm run build`
 5. Start Webserver (with socket.io) `npm run start`
+
+## Saved boards and export
+
+- Every room's board is saved on the server as you draw, so people who join later (or come back after a restart) see everything that's already there.
+- Boards are stored as JSON files in `./data` (change it with the `DATA_DIR` environment variable). Back up that folder to keep your boards.
+- **Name board** gives the current board a name; **Saved boards** lists every saved board so you can reopen it in 2D or VR.
+- **Export image** downloads the board as a PNG, in 2D (toolbar) and in VR (the green box above the eraser, or the button in the corner outside VR).
+- `GET /api/boards` lists saved boards; `GET /api/boards/<room>` returns one board's data.
 
 ## Technologies
 

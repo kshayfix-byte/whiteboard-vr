@@ -1,4 +1,8 @@
 import io from 'socket.io-client';
+import {
+    DEFAULT_BACKGROUND, normalizeRoom, clearCanvas, drawSegment, replayBoard,
+    exportFilename, downloadCanvas, formatDate
+} from './board-client';
 
 function getParameterByName(name, url) {
     if (!url) url = window.location.href;
@@ -10,8 +14,8 @@ function getParameterByName(name, url) {
     return decodeURIComponent(results[2].replace(/\+/g, ' '));
 }
 
-let room = getParameterByName('room');
-if (room != null) {
+let room = normalizeRoom(getParameterByName('room'));
+if (room) {
     const vrButton = document.getElementById('vr-button');
     vrButton.href = "vr.html?room="+room;
     const roomNumber = document.getElementById('room-number');
@@ -26,7 +30,9 @@ const socket = io();
 let id = Math.floor(Math.random() * 100000000);
 let lastX = null;
 let lastY = null;
-let background = "#EEF8FD";
+let background = DEFAULT_BACKGROUND;
+let boardName = '';
+let loaded = false;
 let color = "#000000";
 let size = 10;
 let clearing = false;
@@ -40,8 +46,32 @@ canvas.height = canvasHeight;
 const context2D = canvas.getContext( "2d" );
 
 // draw background
-context2D.fillStyle = background;
-context2D.fillRect(0, 0, canvas.width, canvas.height); 
+clearCanvas(context2D, canvas, background);
+
+const boardNameEl = document.getElementById('board-name');
+function showBoardName(name) {
+    boardName = name || '';
+    boardNameEl.textContent = boardName || 'Untitled board';
+    document.title = (boardName ? boardName + ' - ' : '') + 'Whiteboard VR';
+}
+showBoardName('');
+
+// Ask the server for the saved board on every (re)connect.
+socket.on('connect', () => {
+    socket.emit('join', { room: room });
+});
+
+socket.on('boardState', (state) => {
+    if (normalizeRoom(state.room) !== room) return;
+    background = state.background || DEFAULT_BACKGROUND;
+    replayBoard(context2D, canvas, state);
+    showBoardName(state.name);
+    loaded = true;
+});
+
+socket.on('boardRenamed', (msg) => {
+    if (normalizeRoom(msg.room) === room) showBoardName(msg.name);
+});
 
 socket.on('remoteDraw', (remoteDrawObject) => {
     if (remoteDrawObject.id != id) {
@@ -61,35 +91,22 @@ canvas.addEventListener('mousedown', onMouseDown);
 canvas.addEventListener('mouseup', onMouseUp);
 
 function eraseAllRemote(eraseAllRemoteObject) {
-    if (room != eraseAllRemoteObject.room) {
+    if (room != normalizeRoom(eraseAllRemoteObject.room)) {
         return;
     }
-    context2D.fillStyle = background;
-    context2D.fillRect(0, 0, canvas.width, canvas.height);     
+    clearCanvas(context2D, canvas, background);
 }
 
 function drawRemote(remoteDrawObject) {
-    if (room != remoteDrawObject.room) {
+    if (room != normalizeRoom(remoteDrawObject.room)) {
         return;
     }
-    if (remoteDrawObject.lastX != null && remoteDrawObject.lastY != null) {            
-        context2D.beginPath();
-        context2D.strokeStyle = remoteDrawObject.color;
-        if (remoteDrawObject.clearing) {
-            context2D.strokeStyle = background;
-        }
-        context2D.lineJoin = 'round';
-        context2D.lineWidth = remoteDrawObject.size;
-        context2D.moveTo(remoteDrawObject.lastX, remoteDrawObject.lastY);
-        context2D.lineTo(remoteDrawObject.x, remoteDrawObject.y);
-        context2D.closePath();
-        context2D.stroke();
-        
-    }
+    drawSegment(context2D, remoteDrawObject, background);
 }
 
 function draw (x, y) {
-    if (lastX != null && lastY != null) {        
+    // Don't draw until the saved board has loaded, so nothing gets painted over.
+    if (loaded && lastX != null && lastY != null) {        
         var drawObject= {};
         drawObject.id = id;
         drawObject.lastX = lastX;
@@ -98,7 +115,7 @@ function draw (x, y) {
         drawObject.y = y;
         drawObject.color = color;
         drawObject.room = room;
-        drawObject.size = size;
+        drawObject.size = Number(size);
         drawObject.clearing = clearing;
         socket.emit('draw', drawObject);
         drawRemote(drawObject);
@@ -196,11 +213,77 @@ function onResize() {
 
 onResize()
 
-let saveBoard = document.getElementById('save-board');
-saveBoard.addEventListener('click', () => {
-    document.getElementById("save-board").href = document.getElementById("canvas").toDataURL();
-    document.getElementById("save-board").download = "whiteboard.png";
+let exportImage = document.getElementById('export-image');
+exportImage.addEventListener('click', () => {
+    downloadCanvas(canvas, exportFilename(boardName, room));
 })
+
+let nameBoard = document.getElementById('name-board');
+nameBoard.addEventListener('click', () => {
+    let entered = window.prompt("Name this board:", boardName);
+    if (entered == null) {
+        return; // canceled
+    }
+    socket.emit('rename', { room: room, name: entered });
+})
+
+const boardsOverlay = document.getElementById('boards-overlay');
+const boardsList = document.getElementById('boards-list');
+
+function renderBoardList(boards) {
+    boardsList.innerHTML = '';
+    if (!boards.length) {
+        const empty = document.createElement('p');
+        empty.textContent = 'No saved boards yet. Anything you draw is saved automatically.';
+        boardsList.appendChild(empty);
+        return;
+    }
+    boards.forEach((b) => {
+        const row = document.createElement('div');
+        row.className = 'board-row' + (b.room === room ? ' current' : '');
+        const info = document.createElement('div');
+        const title = document.createElement('div');
+        title.className = 'board-title';
+        title.textContent = b.name || 'Untitled board';
+        const meta = document.createElement('div');
+        meta.className = 'board-meta';
+        meta.textContent = 'Room ' + b.room + ' \u00b7 last changed ' + formatDate(b.updatedAt);
+        info.appendChild(title);
+        info.appendChild(meta);
+        const links = document.createElement('div');
+        const open2d = document.createElement('a');
+        open2d.className = 'button';
+        open2d.href = 'index.html?room=' + encodeURIComponent(b.room);
+        open2d.textContent = 'Open';
+        const openVr = document.createElement('a');
+        openVr.className = 'button';
+        openVr.href = 'vr.html?room=' + encodeURIComponent(b.room);
+        openVr.textContent = 'Open in VR';
+        links.appendChild(open2d);
+        links.appendChild(openVr);
+        row.appendChild(info);
+        row.appendChild(links);
+        boardsList.appendChild(row);
+    });
+}
+
+let savedBoards = document.getElementById('saved-boards');
+savedBoards.addEventListener('click', () => {
+    boardsList.textContent = 'Loading\u2026';
+    boardsOverlay.classList.remove('hidden');
+    fetch('/api/boards')
+        .then((res) => res.json())
+        .then((data) => renderBoardList(data.boards || []))
+        .catch(() => { boardsList.textContent = 'Could not load saved boards.'; });
+})
+document.getElementById('close-boards').addEventListener('click', () => {
+    boardsOverlay.classList.add('hidden');
+});
+boardsOverlay.addEventListener('click', (e) => {
+    if (e.target === boardsOverlay) {
+        boardsOverlay.classList.add('hidden');
+    }
+});
 
 let eraseAll = document.getElementById('erase-all');
 eraseAll.addEventListener('click', () => {
