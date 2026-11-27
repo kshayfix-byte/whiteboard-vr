@@ -16,14 +16,17 @@ import {
     socket, room, initialBoard, tools, onToolChange, selectedBoard, selectBoard, onSelect
 } from './vr/session';
 import { layoutBoards, describePose, boardMetres } from './vr/layout';
+import { createBoardMover } from './vr/board-mover';
 import { createMultiClick } from './triple-click';
 
 const FRAME_COLOR = '#acacac';
 const SELECTED_FRAME_COLOR = '#FFA500';
+const HELD_FRAME_COLOR = '#3BA3FF';
 
 // ---- Whiteboards in the scene: one entity per board in the room ----
 const boardEls = {};   // id -> { root, plane, frame, label, labelEl, width, height, pose }
 let roomBoards = [];   // roomInfo.boards, oldest first
+let mover = null;      // moves boards by hand (vr/board-mover.js)
 
 function painter(id) {
     const entry = boardEls[id || selectedBoard()];
@@ -59,6 +62,7 @@ function placeBoards() {
     ids.forEach((id, i) => {
         const entry = boardEls[id];
         const pose = poses[i];
+        if (mover && mover.isHeld(id)) return; // the hand holding it decides
         entry.root.setAttribute('position', pose.position.join(' '));
         entry.root.setAttribute('rotation', '0 ' + pose.rotationY + ' 0');
         entry.pose = pose;
@@ -143,7 +147,8 @@ function paintBoardEl(id) {
     const name = info ? info.name : '';
     entry.label.setAttribute('value', (selected ? '> ' : '') + shortName(name) + (info && !info.named ? ' (unsaved)' : ''));
     entry.labelBack.setAttribute('material', 'color', selected ? '#FFE0A6' : '#FFFFFF');
-    entry.frame.setAttribute('material', 'color', selected ? SELECTED_FRAME_COLOR : FRAME_COLOR);
+    const held = mover && mover.isHeld(id);
+    entry.frame.setAttribute('material', 'color', held ? HELD_FRAME_COLOR : selected ? SELECTED_FRAME_COLOR : FRAME_COLOR);
 }
 
 // Keep every board's pen marker in step with the shared pen settings.
@@ -368,6 +373,77 @@ window.addEventListener('DOMContentLoaded', () => {
         showInScene('Selected \u201c' + shortName(next.name) + '\u201d' + (entry && entry.pose ? ' ' + describePose(entry.pose) : ''));
     }
 
+    // ---- Moving boards (grip button in VR, Move panel on desktop) ----
+    function setLocalPose(id, pose) {
+        const info = roomBoards.find((b) => b.id === id);
+        if (info) info.pose = pose;
+        placeBoards();
+    }
+
+    mover = createBoardMover({
+        scene: scene,
+        socket: socket,
+        room: room,
+        boardIds: () => Object.keys(boardEls),
+        entry: (id) => boardEls[id],
+        size: (id) => (boardEls[id] ? boardMetres(boardEls[id].width, boardEls[id].height) : null),
+        selected: selectedBoard,
+        select: selectBoard,
+        onLocalPose: (id, pose) => {
+            setLocalPose(id, pose);
+            updateMoveState();
+        },
+        onHeldChange: (id) => {
+            Object.keys(boardEls).forEach((b) => paintBoardEl(b));
+            if (id) {
+                const info = roomBoards.find((b) => b.id === id);
+                showInScene('Moving \u201c' + shortName(info ? info.name : '') + '\u201d. Let go of the grip to drop it.');
+            }
+        },
+        status: (text, isError) => controls.setStatus(text, isError)
+    });
+
+    // Someone else moved a board.
+    socket.on('boardPose', (msg) => {
+        if (!msg || normalizeRoom(msg.room) !== room || !boardEls[msg.board]) return;
+        if (mover.isHeld(msg.board)) return; // we're holding it; ours wins when we let go
+        setLocalPose(msg.board, msg.pose || null);
+        updateMoveState();
+    });
+
+    const movePanel = document.getElementById('vr-move-panel');
+    const moveToggle = document.getElementById('vr-move-toggle');
+    const moveState = document.getElementById('vr-move-state');
+    const autoPlaceBox = document.getElementById('vr-auto-place-box');
+
+    function updateMoveState() {
+        const info = roomBoards.find((b) => b.id === selectedBoard());
+        const moved = !!(info && info.pose);
+        if (moveState) moveState.textContent = moved ? 'Placed by hand' : 'Placed automatically';
+        const autoButton = document.getElementById('vr-auto-place');
+        if (autoButton) autoButton.disabled = !moved;
+        if (autoPlaceBox) autoPlaceBox.setAttribute('vr-button', 'enabled', moved);
+    }
+    onSelect(updateMoveState);
+    socket.on('roomInfo', updateMoveState);
+
+    if (moveToggle && movePanel) {
+        moveToggle.addEventListener('click', () => {
+            const open = movePanel.hasAttribute('hidden');
+            if (open) movePanel.removeAttribute('hidden');
+            else movePanel.setAttribute('hidden', '');
+            moveToggle.classList.toggle('active', open);
+        });
+        movePanel.querySelectorAll('button[data-move]').forEach((button) => {
+            button.addEventListener('click', () => mover.nudge(button.getAttribute('data-move')));
+        });
+        document.getElementById('vr-auto-place').addEventListener('click', () => mover.autoPlace());
+    }
+
+    scene.addEventListener('enter-vr', () => {
+        setTimeout(() => showInScene('Tip: hold the grip button to move a whiteboard.'), 1500);
+    });
+
     document.getElementById('vr-add-board').addEventListener('click', addBoard);
 
     // Mirror on-screen status messages into the scene so they're visible in a headset.
@@ -472,6 +548,8 @@ window.addEventListener('DOMContentLoaded', () => {
             if (selectedBoard()) removeGuard.press(selectedBoard());
         } else if (action === 'next-board') {
             nextBoard();
+        } else if (action === 'auto-place') {
+            mover.autoPlace();
         } else if (action === 'board-size') {
             nextSize();
         } else if (action === 'erase-all') {

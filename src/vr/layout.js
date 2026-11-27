@@ -14,9 +14,11 @@
 //   each other).
 //
 // A board with a stored `pose` ({position: [x, y, z], rotationY} in degrees,
-// world coordinates) is put exactly there instead. Nothing sets a pose yet;
-// that is for the later "reposition whiteboards" feature. This file is also
-// the place to change for the 360-degree board.
+// world coordinates) is put exactly there instead. A board gets a pose when
+// someone moves it (see board-mover.js); "Auto place" sets it back to null.
+// Boards that were moved don't take part in the ring, so a moved board can
+// overlap an automatically placed one. This file is also the place to change
+// for the 360-degree board.
 
 import { PX_PER_METRE, DEFAULT_WIDTH, DEFAULT_HEIGHT } from '../board-client';
 
@@ -134,4 +136,81 @@ export function describePose(p) {
     if (Math.abs(a) > 150) return 'behind you';
     if (a > 0) return Math.abs(a) > 100 ? 'behind you on your left' : 'on your left';
     return Math.abs(a) > 100 ? 'behind you on your right' : 'on your right';
+}
+
+// ---- Moving boards by hand (see board-mover.js) ----
+
+// Kept in step with cleanPose in lib/board-store.js.
+export const POSE_MAX_DISTANCE = 30;
+export const POSE_MAX_HEIGHT = 10;
+const FLOOR_GAP = 0.02;                    // a board's lowest edge stays this far above the floor
+export const NUDGE_STEP = 0.25;            // metres per press of a desktop move button
+export const TURN_STEP = 15;               // degrees per press of a desktop turn button
+
+function wrapDegrees(a) {
+    a = ((a % 360) + 360) % 360;
+    return a >= 360 ? 0 : a;
+}
+
+// Keep a pose inside the room: upright, above the floor, not too high or far.
+// `size` is the board's size in metres ({w, h}); the board's bottom edge
+// stays above the floor.
+export function clampPose(pose, size) {
+    let [x, y, z] = pose.position;
+    const dist = Math.hypot(x, z);
+    if (dist > POSE_MAX_DISTANCE) {
+        x *= POSE_MAX_DISTANCE / dist;
+        z *= POSE_MAX_DISTANCE / dist;
+    }
+    const half = size ? size.h / 2 : 0;
+    y = Math.min(POSE_MAX_HEIGHT, Math.max(half + FLOOR_GAP, y));
+    const mm = (n) => Math.round(n * 1000) / 1000;
+    return { position: [mm(x), mm(y), mm(z)], rotationY: Math.round(wrapDegrees(pose.rotationY || 0) * 10) / 10 };
+}
+
+// The rotation that turns a board at `position` to face where the user stands.
+export function facingRotation(position) {
+    const dx = CENTER.x - position[0];
+    const dz = CENTER.z - position[2];
+    if (Math.hypot(dx, dz) < 1e-6) return 0;
+    return wrapDegrees(Math.atan2(dx, dz) * 180 / Math.PI);
+}
+
+// One press of a desktop move button. Directions are as seen by someone
+// standing in front of the board: left/right slide it along its own width,
+// closer/farther move it towards/away from where the user stands, up/down
+// change its height, turn-left/turn-right spin it on the spot, and face
+// turns it to face the user.
+export function nudgePose(pose, action, size) {
+    const p = { position: pose.position.slice(), rotationY: pose.rotationY || 0 };
+    const rad = p.rotationY * Math.PI / 180;
+    // The board's own right-hand direction (its local +x) in world space.
+    const right = [Math.cos(rad), -Math.sin(rad)];
+    switch (action) {
+        case 'left':
+        case 'right': {
+            const s = action === 'right' ? NUDGE_STEP : -NUDGE_STEP;
+            p.position[0] += right[0] * s;
+            p.position[2] += right[1] * s;
+            break;
+        }
+        case 'up': p.position[1] += NUDGE_STEP; break;
+        case 'down': p.position[1] -= NUDGE_STEP; break;
+        case 'closer':
+        case 'farther': {
+            let dx = p.position[0] - CENTER.x;
+            let dz = p.position[2] - CENTER.z;
+            let d = Math.hypot(dx, dz);
+            if (d < 1e-6) { dx = -Math.sin(rad); dz = -Math.cos(rad); d = 1; }
+            const target = Math.max(0.3, d + (action === 'farther' ? NUDGE_STEP : -NUDGE_STEP));
+            p.position[0] = CENTER.x + dx / d * target;
+            p.position[2] = CENTER.z + dz / d * target;
+            break;
+        }
+        case 'turn-left': p.rotationY += TURN_STEP; break;
+        case 'turn-right': p.rotationY -= TURN_STEP; break;
+        case 'face': p.rotationY = facingRotation(p.position); break;
+        default: break;
+    }
+    return clampPose(p, size);
 }

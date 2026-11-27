@@ -25,6 +25,15 @@
       #vr-save-status { background: rgba(255,255,255,0.85); border-radius: 10px; padding: 0.3em 0.6em; color: rgb(3, 140, 115); }
       #vr-save-status:empty { display: none; }
       #vr-save-status.error { color: #c0392b; }
+      #vr-toolbar button.active { border-color: orange; color: orange; }
+      #vr-move-panel { position: fixed; left: 12px; bottom: 12px; z-index: 10; background: rgba(255,255,255,0.92); border-radius: 12px; padding: 10px; font: 14px sans-serif; color: #333; display: grid; grid-template-columns: repeat(3, auto); gap: 6px; align-items: center; justify-items: stretch; max-width: calc(100% - 24px); }
+      #vr-move-panel[hidden] { display: none; }
+      #vr-move-panel .title { grid-column: 1 / -1; display: flex; justify-content: space-between; gap: 12px; }
+      #vr-move-state { color: gray; font-size: 12px; }
+      #vr-move-panel button { padding: 0.4em 0.7em; font: 14px sans-serif; background: white; color: #333; border: 2px solid gray; border-radius: 10px; cursor: pointer; }
+      #vr-move-panel button:hover { border-color: orange; color: orange; }
+      #vr-move-panel button:disabled, #vr-move-panel button:disabled:hover { opacity: 0.45; cursor: not-allowed; border-color: gray; color: #333; }
+      #vr-move-panel .wide { grid-column: 1 / -1; }
     </style>
     <div id="vr-toolbar">
       <span id="vr-save-status" role="status"></span>
@@ -32,12 +41,27 @@
       <select id="vr-board-select" title="Which whiteboard the buttons act on"></select>
       <button id="vr-add-board">Add whiteboard</button>
       <select id="vr-board-size" title="Size of the selected whiteboard (changes it for everyone)"></select>
+      <button id="vr-move-toggle" title="Move or turn the selected whiteboard in the room">Move board</button>
       <button id="vr-remove-board" title="Removes the selected whiteboard for everyone. Click three times in a row.">Remove whiteboard</button>
       <button id="vr-save">Save</button>
       <button id="vr-rename">Rename</button>
       <button id="vr-save-all">Save all</button>
       <button id="vr-export-image">Export image</button>
       <button id="vr-recover" style="display: none">Restore unsaved</button>
+    </div>
+    <!-- Moves the selected board one step per click (in a headset, hold the grip button instead). -->
+    <div id="vr-move-panel" hidden>
+      <div class="title"><strong>Move selected board</strong><span id="vr-move-state"></span></div>
+      <button data-move="turn-left" title="Turn 15 degrees">&#x27F2; Turn</button>
+      <button data-move="up" title="Up 25 cm">&#x25B2; Up</button>
+      <button data-move="turn-right" title="Turn 15 degrees the other way">Turn &#x27F3;</button>
+      <button data-move="left" title="Slide 25 cm to its left">&#x25C0; Left</button>
+      <button data-move="face" title="Turn it to face where you start">Face me</button>
+      <button data-move="right" title="Slide 25 cm to its right">Right &#x25B6;</button>
+      <button data-move="closer" title="25 cm closer">Closer</button>
+      <button data-move="down" title="Down 25 cm">&#x25BC; Down</button>
+      <button data-move="farther" title="25 cm farther away">Farther</button>
+      <button id="vr-auto-place" class="wide" title="Put it back where the automatic layout puts it" disabled>Auto place</button>
     </div>
     <a-scene shadow="type: pcfsoft" renderer="antialias: true">
       <a-entity environment="groundTexture: none; grid: 1x1; gridColor: #111"></a-entity>
@@ -85,6 +109,9 @@
         <!-- Board size: steps through the ready-made sizes. Label sits left of the button so it clears the room number. -->
         <a-text id="vr-size-label" value="Size: 1.5 x 1 m" color="#03B594" anchor="right" align="right" position="-0.96 1.6 -0.6" width="1.2"></a-text>
         <a-box class="hittable" vr-button="action: board-size; cooldown: 800" position="-0.9 1.6 -0.6" scale="0.08 0.08 0.03"></a-box>
+        <!-- Auto place: puts a board that was moved by hand back in the automatic layout. Below the left column, label to its left so it clears the tray. -->
+        <a-text value="Auto place" color="#03B594" anchor="right" align="right" position="-0.96 0.35 -0.6" width="1.2"></a-text>
+        <a-box id="vr-auto-place-box" class="hittable" vr-button="action: auto-place; enabled: false" position="-0.9 0.35 -0.6" scale="0.08 0.08 0.03"></a-box>
         <a-text id="vr-status-text" value="" color="#222" align="center" position="0 0.38 -0.5" width="1.4"></a-text>
 
         <a-text value="Add whiteboard" color="#03B594" position="0.68 1.48 -0.6" width="1.2"></a-text>
