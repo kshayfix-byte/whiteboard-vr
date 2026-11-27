@@ -16,7 +16,8 @@
 // so nobody draws on the far wall through the near one.
 
 import {
-    PX_PER_METRE, DEFAULT_BACKGROUND, renderOp, drawSegment, opBounds, wrapCopies
+    PX_PER_METRE, DEFAULT_BACKGROUND, renderOp, drawSegment, opBounds, wrapCopies,
+    useLayers, holdLayers, clearCanvas
 } from '../board-client';
 
 export const TILE_WIDTH = 1000;
@@ -81,6 +82,7 @@ export function createWrapSurface(width, height) {
         const canvas = document.createElement('canvas');
         canvas.width = tw;
         canvas.height = height;
+        useLayers(canvas);   // highlights under ink (see board-client.js)
         const texture = new THREE.Texture(canvas, THREE.UVMapping, THREE.ClampToEdgeWrapping, THREE.ClampToEdgeWrapping,
             THREE.LinearFilter, THREE.LinearFilter);
         texture.generateMipmaps = false;
@@ -101,8 +103,7 @@ export function createWrapSurface(width, height) {
     group.add(shell);
 
     function fill(tile) {
-        tile.context2D.fillStyle = background;
-        tile.context2D.fillRect(0, 0, tile.width, height);
+        clearCanvas(tile.context2D, tile.canvas, background);
         tile.texture.needsUpdate = true;
     }
 
@@ -140,13 +141,16 @@ export function createWrapSurface(width, height) {
         replay: function (state) {
             background = state.background || DEFAULT_BACKGROUND;
             tiles.forEach((t) => {
-                t.context2D.fillStyle = background;
-                t.context2D.fillRect(0, 0, t.width, height);
+                clearCanvas(t.context2D, t.canvas, background);
+                holdLayers(t.canvas, true);
             });
             (state.ops || []).forEach((op) => {
                 onTiles(tilesFor(opBounds(op)), (ctx) => renderOp(ctx, op, background, width));
             });
-            tiles.forEach((t) => { t.texture.needsUpdate = true; });
+            tiles.forEach((t) => {
+                holdLayers(t.canvas, false);
+                t.texture.needsUpdate = true;
+            });
         },
         // Canvas point { x, y } where a pointer ray hit the wall, or null if it
         // hit the outer shell (or anything else).

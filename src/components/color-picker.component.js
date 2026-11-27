@@ -1,4 +1,4 @@
-import { setTool } from '../vr/session';
+import { useMarker } from '../vr/session';
 import { watchTouch } from '../vr/reach';
 
 
@@ -38,7 +38,8 @@ AFRAME.registerComponent('color-picker', {
     },
     setColor: function() {
         // Pen settings are shared by every whiteboard (see vr/session.js).
-        setTool({ color: this.data.color, clearing: false });
+        // A colour always means the marker (as before the highlighter existed).
+        useMarker(this.data.color);
     },
     onMouseUp: function(evt) {
         var array = this.getMousePosition( this.renderer.domElement, evt.clientX || evt.touches[0].clientX, evt.clientY || evt.touches[0].clientY );

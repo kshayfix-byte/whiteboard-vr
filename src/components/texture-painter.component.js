@@ -8,7 +8,7 @@
 // between the canvas's left and right edges.
 import {
     DEFAULT_BACKGROUND, normalizeRoom, clearCanvas, drawSegment, replayBoard,
-    exportFilename, downloadCanvas, sizeCanvas, unwrapX
+    exportFilename, downloadCanvas, sizeCanvas, unwrapX, useLayers
 } from '../board-client';
 import { socket, room, tools, selectBoard } from '../vr/session';
 import { nearestHit } from '../vr/reach';
@@ -114,6 +114,7 @@ AFRAME.registerComponent('texture-painter', {
         this._canvas = document.createElement( "canvas" );
         this._canvas.width = this.data.width;
         this._canvas.height = this.data.height;
+        useLayers(this._canvas);   // highlights under ink (see board-client.js)
         this._context2D = this._canvas.getContext( "2d" );
     
         this.parentTexture.image = this._canvas;
@@ -291,6 +292,7 @@ AFRAME.registerComponent('texture-painter', {
             drawObject.board = this.boardId;
             drawObject.size = Number(tools.size);
             drawObject.clearing = tools.clearing;
+            drawObject.highlight = !!tools.highlight;   // with clearing: the highlight eraser
             drawObject.bw = this.boardWidth();   // board size this stroke was drawn on
             drawObject.bh = this.boardHeight();
             socket.emit('draw', drawObject);
