@@ -3,7 +3,7 @@ import {
     DEFAULT_BACKGROUND, normalizeRoom, clearCanvas, drawSegment, replayBoard,
     exportFilename, downloadCanvas, formatDate,
     BOARD_SIZES, SIZE_LIMITS, PX_PER_METRE, DEFAULT_WIDTH, DEFAULT_HEIGHT,
-    describeSize, presetFor, metres, sizeCanvas,
+    describeSize, presetFor, metres, sizeCanvas, useLayers,
     isWrapBoard, describeWrapSize, unwrapX,
     HIGHLIGHT_COLORS, HIGHLIGHT_NAMES, DEFAULT_HIGHLIGHT_SIZE
 } from './board-client';
@@ -38,14 +38,15 @@ let id = Math.floor(Math.random() * 100000000);
 let lastX = null;
 let lastY = null;
 // Pen settings. The marker and the highlighter each remember their own colour
-// and size; the eraser uses the marker's size (as before).
-let tool = 'marker';     // 'marker' | 'highlighter' | 'eraser'
+// and size. The eraser uses the marker's size (as before); the highlight
+// eraser (rubs out highlights only, leaving writing) the highlighter's.
+let tool = 'marker';     // 'marker' | 'highlighter' | 'eraser' | 'hl-eraser'
 const pens = {
     marker: { color: '#000000', size: 10 },
     highlighter: { color: HIGHLIGHT_COLORS[0], size: DEFAULT_HIGHLIGHT_SIZE }
 };
 function pen() {
-    return tool === 'highlighter' ? pens.highlighter : pens.marker;
+    return tool === 'highlighter' || tool === 'hl-eraser' ? pens.highlighter : pens.marker;
 }
 
 // Every whiteboard in the room has its own canvas; only the current one is
@@ -92,6 +93,7 @@ function boardFor(bid, width, height, shape) {
     const c = document.createElement('canvas');
     c.width = width || DEFAULT_WIDTH;
     c.height = height || DEFAULT_HEIGHT;
+    useLayers(c);   // highlights under ink, so highlights can be erased on their own
     let el = c;
     if (wrap) {
         el = document.createElement('canvas');
@@ -330,8 +332,8 @@ function draw (x, y) {
         drawObject.room = room;
         drawObject.board = boardId;
         drawObject.size = Number(pen().size);
-        drawObject.clearing = tool === 'eraser';
-        drawObject.highlight = tool === 'highlighter';
+        drawObject.clearing = tool === 'eraser' || tool === 'hl-eraser';
+        drawObject.highlight = tool === 'highlighter' || tool === 'hl-eraser';
         drawObject.bw = canvas.width;   // board size this stroke was drawn on
         drawObject.bh = canvas.height;
         socket.emit('draw', drawObject);
@@ -409,6 +411,7 @@ colorPicker.addEventListener("change", (evt) => {
     // Picking a colour while the eraser is on goes back to the marker, so the
     // colour you picked is what you draw with.
     if (tool === 'eraser') setTool('marker');
+    if (tool === 'hl-eraser') setTool('highlighter');
     pen().color = evt.target.value;
     showTool();
 }, false);
@@ -426,7 +429,7 @@ HIGHLIGHT_COLORS.forEach((c, i) => {
     b.setAttribute('aria-label', b.title);
     b.addEventListener('click', () => {
         pens.highlighter.color = c;
-        showTool();
+        setTool('highlighter');
     });
     swatches.appendChild(b);
 });

@@ -1,5 +1,10 @@
-import { useEraser } from '../vr/session';
+import { tools, useEraser, onToolChange } from '../vr/session';
 import { watchTouch } from '../vr/reach';
+
+// Touch the eraser box to pick up the eraser; touch it again to switch
+// between the ordinary eraser (pink: writing and highlights) and the
+// highlight eraser (yellow: highlights only, writing stays).
+const HIGHLIGHT_ERASER_COLOR = '#FFF176';
 
 
 AFRAME.registerComponent('eraser-picker', {
@@ -32,17 +37,28 @@ AFRAME.registerComponent('eraser-picker', {
         // Touch it with the pointer (within 20 cm), or point and pull the
         // trigger from further away (see vr/reach.js).
         this.touch = watchTouch(this.el, (controller) => {
-            controller.setAttribute('line', {
-                color: this.data.color
-            });
             this.activateEraser()
+            controller.setAttribute('line', { color: tools.eraserColor || this.data.color });
         });
+        onToolChange(() => this.show());
     },
     tick: function () {
         this.touch.tick();
     },
     activateEraser: function() {
-        useEraser(this.data.color);
+        if (tools.clearing) {
+            const hl = !tools.highlight;
+            useEraser(hl ? HIGHLIGHT_ERASER_COLOR : this.data.color, hl);
+        } else {
+            useEraser(this.data.color, false);
+        }
+    },
+    // Box colour and label show which eraser is picked up.
+    show: function() {
+        const hl = tools.clearing && tools.highlight;
+        this.el.setAttribute('material', 'color', hl ? HIGHLIGHT_ERASER_COLOR : this.data.color);
+        const label = document.getElementById('vr-eraser-label');
+        if (label) label.setAttribute('value', hl ? 'Erase highlights' : 'Eraser');
     },
     onMouseUp: function(evt) {
         var array = this.getMousePosition( this.renderer.domElement, evt.clientX || evt.touches[0].clientX, evt.clientY || evt.touches[0].clientY );

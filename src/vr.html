@@ -95,7 +95,8 @@
         <a-cylinder class="hittable" color-picker="color: #FFFFFF" position="0.6 0.5 -0.52" height="0.1" radius="0.05"></a-cylinder>
         <a-box material="color: #acacac; roughness: 0.6; metalness: 0.8" position="0 0.42 -0.52" depth="0.2" height="0.02" width="1.7"></a-box>
         
-        <a-text value="Eraser" color="black" position="0.82 0.9 -0.6" width="1.2"></a-text>
+        <!-- Eraser: touch again to switch to "Erase highlights" (highlights only). -->
+        <a-text id="vr-eraser-label" value="Eraser" color="black" position="0.82 0.9 -0.6" width="1.2"></a-text>
         <a-box class="hittable" eraser-picker material="color: pink; roughness: 0.7; metalness: 0.1" position="0.9 0.8 -0.6" scale="0.1 0.1 0.1"></a-box>
         
         <!-- Highlighter: touch to pick it up, touch again for the next colour (src/components/highlighter-picker.component.js). -->

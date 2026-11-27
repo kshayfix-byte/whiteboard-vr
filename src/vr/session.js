@@ -26,7 +26,8 @@ export const socket = io();
 
 // Pen settings, the same for every whiteboard. `color` and `size` are those
 // of the pen in use: the marker, or the highlighter when `highlight` is on.
-// `clearing` = the eraser (it uses the marker's size, as before).
+// `clearing` = the eraser (it uses the marker's size, as before);
+// `clearing` + `highlight` = the highlight eraser (the highlighter's size).
 export const tools = { color: '#000000', size: 10, clearing: false, highlight: false };
 
 // Each pen remembers its own colour and size while the other is in use.
@@ -38,7 +39,8 @@ const pens = {
 const toolListeners = [];
 export function setTool(changes) {
     Object.assign(tools, changes);
-    const p = tools.highlight && !tools.clearing ? pens.highlighter : pens.marker;
+    // The highlight eraser (clearing + highlight) uses the highlighter's size.
+    const p = tools.highlight ? pens.highlighter : pens.marker;
     if (!tools.clearing) p.color = tools.color;
     p.size = tools.size;
     toolListeners.forEach((fn) => fn(tools));
@@ -58,8 +60,11 @@ export function highlighterColor() {
     return pens.highlighter.color;
 }
 
-export function useEraser(eraserColor) {
-    setTool({ clearing: true, highlight: false, eraserColor: eraserColor, color: pens.marker.color, size: pens.marker.size });
+// The eraser; with highlightsOnly, the highlight eraser (rubs out
+// highlights and leaves the writing).
+export function useEraser(eraserColor, highlightsOnly) {
+    const p = highlightsOnly ? pens.highlighter : pens.marker;
+    setTool({ clearing: true, highlight: !!highlightsOnly, eraserColor: eraserColor, color: p.color, size: p.size });
 }
 export function onToolChange(fn) {
     toolListeners.push(fn);
