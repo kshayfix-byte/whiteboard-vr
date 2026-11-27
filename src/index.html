@@ -75,9 +75,14 @@
     <div id="canvas-holder"></div>
     <div class="toolbar">
       <div>
+        <span class="tool-pick" role="radiogroup" aria-label="Tool">
+          <label title="Opaque marker"><input type="radio" name="tool" value="marker" checked> Marker</label>
+          <label title="See-through highlighter: writing underneath stays visible"><input type="radio" name="tool" value="highlighter"> Highlighter</label>
+          <label title="Paints the board colour over marker and highlighter alike"><input type="radio" name="tool" value="eraser" id="eraser"> Eraser</label>
+        </span>
         Colour: <input id="color-picker" type="color" value="#000000">
+        <span id="highlight-swatches" class="highlight-swatches hidden"></span>
         Brush size: <input type="range" min="5" max="50" id="brush-size" value="10">
-        Eraser: <input type="checkbox" id="eraser">
       </div>
       <div>
         <div class="room">Room: <span id="room-number">CVC19</span></div>

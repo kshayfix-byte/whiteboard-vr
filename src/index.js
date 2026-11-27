@@ -4,7 +4,8 @@ import {
     exportFilename, downloadCanvas, formatDate,
     BOARD_SIZES, SIZE_LIMITS, PX_PER_METRE, DEFAULT_WIDTH, DEFAULT_HEIGHT,
     describeSize, presetFor, metres, sizeCanvas,
-    isWrapBoard, describeWrapSize, unwrapX
+    isWrapBoard, describeWrapSize, unwrapX,
+    HIGHLIGHT_COLORS, HIGHLIGHT_NAMES, DEFAULT_HIGHLIGHT_SIZE
 } from './board-client';
 import { createSaveControls } from './save-controls';
 import { createRecoveryUI } from './recovery-ui';
@@ -36,9 +37,16 @@ const socket = io();
 let id = Math.floor(Math.random() * 100000000);
 let lastX = null;
 let lastY = null;
-let color = "#000000";
-let size = 10;
-let clearing = false;
+// Pen settings. The marker and the highlighter each remember their own colour
+// and size; the eraser uses the marker's size (as before).
+let tool = 'marker';     // 'marker' | 'highlighter' | 'eraser'
+const pens = {
+    marker: { color: '#000000', size: 10 },
+    highlighter: { color: HIGHLIGHT_COLORS[0], size: DEFAULT_HIGHLIGHT_SIZE }
+};
+function pen() {
+    return tool === 'highlighter' ? pens.highlighter : pens.marker;
+}
 
 // Every whiteboard in the room has its own canvas; only the current one is
 // shown. boards[boardId] = { canvas, context2D, background, loaded, el, wrap, offset }.
@@ -318,11 +326,12 @@ function draw (x, y) {
         drawObject.lastY = lastY;
         drawObject.x = x;
         drawObject.y = y;
-        drawObject.color = color;
+        drawObject.color = pen().color;
         drawObject.room = room;
         drawObject.board = boardId;
-        drawObject.size = Number(size);
-        drawObject.clearing = clearing;
+        drawObject.size = Number(pen().size);
+        drawObject.clearing = tool === 'eraser';
+        drawObject.highlight = tool === 'highlighter';
         drawObject.bw = canvas.width;   // board size this stroke was drawn on
         drawObject.bh = canvas.height;
         socket.emit('draw', drawObject);
@@ -393,22 +402,55 @@ function attachDrawing(c) {
 
 
 const colorPicker = document.querySelector("#color-picker");
+const brushSize = document.querySelector("#brush-size");
+const swatches = document.getElementById('highlight-swatches');
 
 colorPicker.addEventListener("change", (evt) => {
-    color = evt.target.value;
+    // Picking a colour while the eraser is on goes back to the marker, so the
+    // colour you picked is what you draw with.
+    if (tool === 'eraser') setTool('marker');
+    pen().color = evt.target.value;
+    showTool();
 }, false);
-
-const brushSize = document.querySelector("#brush-size");
 
 brushSize.addEventListener("change", (evt) => {
-    size = evt.target.value;
+    pen().size = Number(evt.target.value);
 }, false);
 
-const eraser = document.querySelector("#eraser");
+HIGHLIGHT_COLORS.forEach((c, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.style.background = c;
+    b.dataset.color = c;
+    b.title = 'Highlighter: ' + HIGHLIGHT_NAMES[i];
+    b.setAttribute('aria-label', b.title);
+    b.addEventListener('click', () => {
+        pens.highlighter.color = c;
+        showTool();
+    });
+    swatches.appendChild(b);
+});
 
-eraser.addEventListener("change", (evt) => {
-    clearing = evt.target.checked;
-}, false);
+// Put the toolbar in step with the current tool.
+function showTool() {
+    document.querySelectorAll('input[name="tool"]').forEach((r) => { r.checked = r.value === tool; });
+    colorPicker.value = pen().color.toLowerCase();
+    brushSize.value = pen().size;
+    swatches.classList.toggle('hidden', tool !== 'highlighter');
+    Array.prototype.forEach.call(swatches.children, (b) => {
+        b.classList.toggle('selected', b.dataset.color.toLowerCase() === pens.highlighter.color.toLowerCase());
+    });
+}
+
+function setTool(next) {
+    tool = next;
+    showTool();
+}
+
+document.querySelectorAll('input[name="tool"]').forEach((r) => {
+    r.addEventListener('change', () => { if (r.checked) setTool(r.value); });
+});
+showTool();
 
 window.addEventListener('resize', onResize)
 

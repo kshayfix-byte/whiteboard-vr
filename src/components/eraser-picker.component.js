@@ -1,4 +1,4 @@
-import { setTool } from '../vr/session';
+import { useEraser } from '../vr/session';
 import { watchTouch } from '../vr/reach';
 
 
@@ -42,7 +42,7 @@ AFRAME.registerComponent('eraser-picker', {
         this.touch.tick();
     },
     activateEraser: function() {
-        setTool({ clearing: true, eraserColor: this.data.color });
+        useEraser(this.data.color);
     },
     onMouseUp: function(evt) {
         var array = this.getMousePosition( this.renderer.domElement, evt.clientX || evt.touches[0].clientX, evt.clientY || evt.touches[0].clientY );

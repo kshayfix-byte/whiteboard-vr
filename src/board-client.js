@@ -11,7 +11,10 @@ export function clearCanvas(context2D, canvas, background) {
     context2D.fillRect(0, 0, canvas.width, canvas.height);
 }
 
-function strokeLine(context2D, x0, y0, x1, y1, color, size) {
+function strokeLine(context2D, x0, y0, x1, y1, color, size, highlight) {
+    context2D.save();
+    // Highlighter: see highlightTint() below.
+    context2D.globalCompositeOperation = highlight ? 'darken' : 'source-over';
     context2D.beginPath();
     context2D.strokeStyle = color;
     context2D.lineJoin = 'round';
@@ -20,6 +23,49 @@ function strokeLine(context2D, x0, y0, x1, y1, color, size) {
     context2D.moveTo(x0, y0);
     context2D.lineTo(x1, y1);
     context2D.stroke();
+    context2D.restore();
+}
+
+// ---- Highlighter ----
+// A highlighter stroke should look like one see-through layer of colour,
+// even though it arrives as many short overlapping segments. Drawing each
+// segment with ordinary transparency would make dark blotches wherever two
+// segments (or the round ends of two segments) overlap.
+//
+// Instead a highlight is drawn in an opaque "tint": the highlighter colour
+// mixed with the board's background at HIGHLIGHT_ALPHA, which is exactly what
+// a see-through highlight looks like on an empty part of the board. It is
+// drawn with the canvas's "darken" mode, which keeps the darker of the tint
+// and what is already there, colour channel by colour channel. So:
+// - on bare board it shows the tint, and drawing over it again changes
+//   nothing (no blotches, any number of overlapping segments = one layer);
+// - writing under it stays visible (black stays black, blue ink goes a
+//   deeper blue under yellow, like a real highlighter on paper);
+// - two different highlighter colours over each other mix (yellow + pink
+//   gives orange), but the same colour twice doesn't get darker;
+// - it doesn't matter which order things are drawn in, so live drawing,
+//   redrawing a saved board, the 360-degree tiles and PNG export all match;
+// - the eraser (which paints the background) removes highlights and ink alike.
+// Marker ink drawn on top of a highlight later covers it, as before.
+export const HIGHLIGHT_ALPHA = 0.5;          // guess: how strong a highlight looks
+export const HIGHLIGHT_COLORS = ['#FFEB3B', '#76FF03', '#FF4FA3', '#40C4FF', '#FF9100'];
+export const HIGHLIGHT_NAMES = ['yellow', 'green', 'pink', 'blue', 'orange'];
+export const DEFAULT_HIGHLIGHT_SIZE = 30;
+
+function parseHex(hex) {
+    let h = String(hex || '').replace('#', '');
+    if (h.length === 3) h = h.split('').map((c) => c + c).join('');
+    const n = parseInt(h, 16);
+    if (h.length !== 6 || isNaN(n)) return null;
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+// The opaque colour a highlight in `color` shows on an empty board.
+export function highlightTint(color, background) {
+    const c = parseHex(color) || [255, 235, 59];
+    const b = parseHex(background || DEFAULT_BACKGROUND) || [255, 255, 255];
+    const mix = c.map((v, i) => Math.round(b[i] + (v - b[i]) * HIGHLIGHT_ALPHA));
+    return 'rgb(' + mix.join(',') + ')';
 }
 
 // ---- 360-degree (wraparound) boards ----
@@ -48,18 +94,25 @@ export function unwrapX(x, lastX, wrap) {
     return x;
 }
 
-function strokeWrapped(context2D, x0, y0, x1, y1, color, size, wrap) {
+function strokeWrapped(context2D, x0, y0, x1, y1, color, size, wrap, highlight) {
     wrapCopies(Math.min(x0, x1), Math.max(x0, x1), wrap).forEach((dx) => {
-        strokeLine(context2D, x0 + dx, y0, x1 + dx, y1, color, size);
+        strokeLine(context2D, x0 + dx, y0, x1 + dx, y1, color, size, highlight);
     });
+}
+
+// The colour (and mode) to paint a stroke with. The eraser wins over the highlighter.
+function strokePaint(erase, highlight, color, background) {
+    if (erase) return { color: background || DEFAULT_BACKGROUND, highlight: false };
+    if (highlight) return { color: highlightTint(color, background), highlight: true };
+    return { color: color, highlight: false };
 }
 
 // Draw a live `draw` message (the format clients send over the socket).
 // `wrap` is the board width for wraparound boards, otherwise leave it out.
 export function drawSegment(context2D, obj, background, wrap) {
     if (obj.lastX == null || obj.lastY == null) return;
-    const color = obj.clearing ? (background || DEFAULT_BACKGROUND) : obj.color;
-    strokeWrapped(context2D, obj.lastX, obj.lastY, obj.x, obj.y, color, obj.size, wrap);
+    const paint = strokePaint(obj.clearing, obj.highlight, obj.color, background);
+    strokeWrapped(context2D, obj.lastX, obj.lastY, obj.x, obj.y, paint.color, obj.size, wrap, paint.highlight);
 }
 
 // Draw one stored op from the server. Unknown op types are skipped so that
@@ -67,8 +120,10 @@ export function drawSegment(context2D, obj, background, wrap) {
 export function renderOp(context2D, op, background, wrap) {
     if (!op) return;
     if (op.type === 'stroke') {
-        const color = op.erase ? (background || DEFAULT_BACKGROUND) : op.color;
-        strokeWrapped(context2D, op.x0, op.y0, op.x1, op.y1, color, op.size, wrap);
+        // Highlighter strokes are strokes with highlight: true (older pages
+        // that don't know the flag draw them as ordinary marker strokes).
+        const paint = strokePaint(op.erase, op.highlight, op.color, background);
+        strokeWrapped(context2D, op.x0, op.y0, op.x1, op.y1, paint.color, op.size, wrap, paint.highlight);
     }
 }
 

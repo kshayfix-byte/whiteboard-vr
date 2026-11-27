@@ -291,6 +291,7 @@ AFRAME.registerComponent('texture-painter', {
             drawObject.board = this.boardId;
             drawObject.size = Number(tools.size);
             drawObject.clearing = tools.clearing;
+            drawObject.highlight = !!tools.highlight && !tools.clearing;
             drawObject.bw = this.boardWidth();   // board size this stroke was drawn on
             drawObject.bh = this.boardHeight();
             socket.emit('draw', drawObject);
