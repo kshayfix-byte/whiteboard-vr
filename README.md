@@ -20,6 +20,11 @@ Try it yourself: [https://whiteboard-vr.herokuapp.com](https://whiteboard-vr.her
 4. Build project `npm run build`
 5. Start Webserver (with socket.io) `npm run start`
 
+## Testing
+
+- `npm test` runs the automated checks for the server and board logic (Node 18 or newer).
+- [docs/TEST_PLAN.md](docs/TEST_PLAN.md) is the full manual test plan for 2D, mobile and headsets, including how to run the app over HTTPS for a headset.
+
 ## Saving, naming and export
 
 - Each new whiteboard gets a temporary name like `Whiteboard_4821`. The current board is shared live with everyone in the room, including people who join later.
