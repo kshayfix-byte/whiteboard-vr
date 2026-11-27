@@ -17,6 +17,8 @@ import {
 } from './vr/session';
 import { layoutBoards, describePose, boardMetres } from './vr/layout';
 import { createBoardMover } from './vr/board-mover';
+import { createLocomotion } from './vr/locomotion';
+import { reachMode, setReachMode, onReachChange } from './vr/reach';
 import { createMultiClick } from './triple-click';
 
 const FRAME_COLOR = '#acacac';
@@ -440,8 +442,37 @@ window.addEventListener('DOMContentLoaded', () => {
         document.getElementById('vr-auto-place').addEventListener('click', () => mover.autoPlace());
     }
 
+    // ---- Moving yourself around, and how far the pointer reaches ----
+    const locomotion = createLocomotion({
+        scene: scene,
+        rig: document.getElementById('rig'),
+        camera: document.getElementById('camera'),
+        busy: (controller) => mover.holds(controller),
+        status: showInScene
+    });
+    const movingLabel = document.getElementById('vr-moving-label');
+    const reachLabel = document.getElementById('vr-reach-label');
+    function paintMoving() {
+        if (movingLabel) movingLabel.setAttribute('value', 'Moving: ' + (locomotion.mode() === 'smooth' ? 'Smooth' : 'Teleport'));
+    }
+    function paintReach() {
+        if (reachLabel) reachLabel.setAttribute('value', 'Reach: ' + (reachMode() === 'short' ? '20 cm' : 'Long'));
+    }
+    locomotion.onModeChange(paintMoving);
+    onReachChange((mode) => {
+        paintReach();
+        showInScene(mode === 'short'
+            ? 'Short reach: the marker only reaches 20 cm, like a real pen.'
+            : 'Long reach: point at any board across the room and pull the trigger to draw.');
+    });
+    paintMoving();
+    paintReach();
+    setReachMode(reachMode()); // apply the remembered setting to the controllers
+
     scene.addEventListener('enter-vr', () => {
-        setTimeout(() => showInScene('Tip: hold the grip button to move a whiteboard.'), 1500);
+        setTimeout(() => showInScene(locomotion.mode() === 'smooth'
+            ? 'Tip: left thumbstick walks, right thumbstick turns. Grip moves a whiteboard.'
+            : 'Tip: push a thumbstick forward and let go to teleport. Grip moves a whiteboard.'), 1500);
     });
 
     document.getElementById('vr-add-board').addEventListener('click', addBoard);
@@ -552,6 +583,12 @@ window.addEventListener('DOMContentLoaded', () => {
             mover.autoPlace();
         } else if (action === 'board-size') {
             nextSize();
+        } else if (action === 'moving-mode') {
+            locomotion.toggleMode();
+        } else if (action === 'reach') {
+            setReachMode(reachMode() === 'short' ? 'long' : 'short');
+        } else if (action === 'back-to-start') {
+            locomotion.backToStart();
         } else if (action === 'erase-all') {
             if (painter()) painter().eraseAll();
         }

@@ -1,3 +1,5 @@
+import { nearestHit } from '../vr/reach';
+
 // A button in the VR scene. Point at it and pull the trigger (or click it with
 // the mouse outside VR) and it emits `vr-action` on the scene with its action,
 // e.g. "save", "save-all" or "export". Set `enabled: false` to grey it out.
@@ -25,7 +27,7 @@ AFRAME.registerComponent('vr-button', {
 
         document.querySelectorAll(".controller").forEach((controller) => {
             controller.addEventListener('triggerdown', evt => {
-                if (this.raycasterObj) this.press();
+                if (nearestHit(controller, this.el)) this.press();
             });
         });
 
