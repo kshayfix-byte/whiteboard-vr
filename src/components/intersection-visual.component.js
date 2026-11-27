@@ -61,7 +61,8 @@ AFRAME.registerComponent('intersection-visual', {
         if (!this.raycasterObj) { return; }  // Not intersecting.
 
         let intersection = nearestHit(this.raycasterObj, this.el);
-        if (!intersection) { this.hide(); return; }
+        // No pen marker on parts you can't draw on (the outside of a 360-degree board).
+        if (!intersection || intersection.object.userData.noPen) { this.hide(); return; }
         const p = intersection.point;
         this.mesh.position.set(p.x, p.y, p.z);
 

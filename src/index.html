@@ -58,11 +58,18 @@
     <div class="board-tabs" id="board-tabs" role="tablist" aria-label="Whiteboards">
       <div class="board-tab-list" id="board-tab-list"></div>
       <button id="add-board" class="add-board" title="Add a new whiteboard to this room">+ Add whiteboard</button>
+      <button id="add-wrap-board" class="add-board" title="Add a 360&deg; board: in VR it's a round wall you stand inside and draw on all the way round. Here it shows as a panorama whose left and right edges join up.">+ Add 360&deg; board</button>
       <span class="board-view-controls">
         <button id="board-size" title="Change the size of this whiteboard (for everyone)">Size: 1.5 &times; 1 m</button>
         <button id="zoom-out" title="Zoom out" aria-label="Zoom out">&minus;</button>
         <button id="zoom-fit" title="Fit the whole board on screen">Fit</button>
         <button id="zoom-in" title="Zoom in" aria-label="Zoom in">+</button>
+      </span>
+      <!-- Only shown for 360-degree boards: turn the panorama round. -->
+      <span class="board-view-controls hidden" id="wrap-controls">
+        <button id="turn-left" title="Turn the view 45&deg; left (the left and right edges of a 360&deg; board join up)">&#x25C0; Turn</button>
+        <button id="turn-front" title="Put the front (what's in front of you in VR) back in the middle">Front</button>
+        <button id="turn-right" title="Turn the view 45&deg; right">Turn &#x25B6;</button>
       </span>
     </div>
     <div id="canvas-holder"></div>

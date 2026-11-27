@@ -322,3 +322,11 @@ body {
     background: rgba(255, 255, 255, 0.92);
     padding-bottom: 8px;
 }
+
+/* 360-degree boards: turn the panorama */
+.board-view-controls.hidden {
+    display: none;
+}
+#wrap-controls {
+    margin-left: 0;
+}

@@ -49,6 +49,8 @@ function angleDiff(a, b) {
 //   select(id)
 //   onLocalPose(id, pose) this page moved a board (pose null = auto place)
 //   onHeldChange(id)      a board was grabbed (id) or dropped (null)
+//   canGrab(id)           optional; false for boards the grip can't pick up
+//                         (360-degree boards: you stand inside them)
 //   status(text, isError)
 export function createBoardMover(options) {
     const { scene, socket, room } = options;
@@ -89,6 +91,10 @@ export function createBoardMover(options) {
         const id = pointedBoard(controller) || options.selected();
         const e = id && options.entry(id);
         if (!e || !e.pose) return;
+        if (options.canGrab && !options.canGrab(id)) {
+            options.status('360° boards can’t be grabbed. Use the Move board panel on a computer, or Auto place.');
+            return;
+        }
         if (id !== options.selected()) options.select(id);
         controller.object3D.updateMatrixWorld();
         const inv = new THREE.Matrix4();

@@ -17,10 +17,16 @@
 // world coordinates) is put exactly there instead. A board gets a pose when
 // someone moves it (see board-mover.js); "Auto place" sets it back to null.
 // Boards that were moved don't take part in the ring, so a moved board can
-// overlap an automatically placed one. This file is also the place to change
-// for the 360-degree board.
+// overlap an automatically placed one.
+//
+// 360-degree boards (shape "cylinder") are rooms of their own: a round wall
+// you stand inside. They don't take part in the ring. Each one gets its own
+// spot behind where you start, beyond the ring boards, one after another
+// further back; "Go inside" takes you to its middle. Their pose is the
+// middle of the cylinder, and rotationY turns the wall (the middle of the
+// canvas faces the cylinder's local -z, i.e. towards the start at rotation 0).
 
-import { PX_PER_METRE, DEFAULT_WIDTH, DEFAULT_HEIGHT } from '../board-client';
+import { PX_PER_METRE, DEFAULT_WIDTH, DEFAULT_HEIGHT, isWrapBoard } from '../board-client';
 
 export const CENTER = { x: 0, z: 0.1 };   // where the user stands
 export const BOARD_HEIGHT = 1.4;          // centre of a standard board above the floor
@@ -35,6 +41,9 @@ const RING_STEP = 1.3;
 const RING_GAP = 1;                       // degrees between neighbouring frames
 const MIN_FRONT = 45;                     // degrees kept clear on each side of straight ahead
 const FRAME = 0.06;                       // the frame adds this much to a board's width
+const WRAP_BOTTOM = 0.35;                 // lowest edge of a 360-degree board's wall
+const WRAP_FIRST = 6;                     // metres behind the start to the first 360-degree board's middle
+const WRAP_GAP = 1.5;                     // metres between neighbouring 360-degree boards (and the ring)
 
 // Size of a board in metres.
 export function boardMetres(width, height) {
@@ -62,11 +71,53 @@ function hasPose(pose) {
     return pose && Array.isArray(pose.position) && pose.position.length === 3 && pose.position.every((n) => typeof n === 'number' && isFinite(n));
 }
 
-// boards: [{ width, height, pose }] in creation order (first = front board).
-// Returns one { position: [x, y, z], rotationY } per board.
+// Radius of a 360-degree board's wall in metres.
+export function wrapRadius(width) {
+    return (width || 8000) / PX_PER_METRE / (2 * Math.PI);
+}
+
+// boards: [{ width, height, pose, shape }] in creation order (the first flat
+// board is the front board). Returns one { position: [x, y, z], rotationY }
+// per board, in the same order.
 export function layoutBoards(boards) {
+    const flatIndex = [];
+    const wrapIndex = [];
+    boards.forEach((b, i) => (isWrapBoard(b) ? wrapIndex : flatIndex).push(i));
+    const result = new Array(boards.length);
+    const flat = layoutFlat(flatIndex.map((i) => boards[i]));
+    flatIndex.forEach((i, k) => { result[i] = flat.poses[k]; });
+
+    // 360-degree boards: in a row straight behind the start, clear of the ring.
+    let distance = Math.max(WRAP_FIRST, flat.outerRadius + WRAP_GAP);
+    let first = true;
+    wrapIndex.forEach((i) => {
+        const b = boards[i];
+        if (hasPose(b.pose)) {
+            result[i] = { position: b.pose.position.slice(), rotationY: Number(b.pose.rotationY) || 0 };
+            return;
+        }
+        const r = wrapRadius(b.width);
+        const h = (b.height || 1800) / PX_PER_METRE;
+        distance += first ? 0 : r;
+        first = false;
+        result[i] = { position: [CENTER.x, WRAP_BOTTOM + h / 2, CENTER.z + distance], rotationY: 0 };
+        distance += r + WRAP_GAP + r;
+    });
+    return result;
+}
+
+// Is the point (x, z) inside the 360-degree board placed at `pose`?
+export function insideWrap(pose, width, x, z) {
+    if (!pose) return false;
+    return Math.hypot(x - pose.position[0], z - pose.position[2]) < wrapRadius(width) - 0.05;
+}
+
+// The flat boards. Returns { poses, outerRadius } where outerRadius is how
+// far from the start the outermost ring reaches (0 with no ring boards).
+function layoutFlat(boards) {
     const result = [];
-    if (!boards.length) return result;
+    let outerRadius = 0;
+    if (!boards.length) return { poses: result, outerRadius: outerRadius };
 
     // First board.
     const first = boardMetres(boards[0].width, boards[0].height);
@@ -124,8 +175,9 @@ export function layoutBoards(boards) {
             }
         }
         result.push(pose || ringPose(180, radius, size.h));
+        outerRadius = Math.max(outerRadius, radius);
     }
-    return result;
+    return { poses: result, outerRadius: outerRadius };
 }
 
 // A few words saying where a board is, for messages like "added to your left".

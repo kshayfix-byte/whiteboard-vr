@@ -3,7 +3,8 @@ import {
     DEFAULT_BACKGROUND, normalizeRoom, clearCanvas, drawSegment, replayBoard,
     exportFilename, downloadCanvas, formatDate,
     BOARD_SIZES, SIZE_LIMITS, PX_PER_METRE, DEFAULT_WIDTH, DEFAULT_HEIGHT,
-    describeSize, presetFor, metres, sizeCanvas
+    describeSize, presetFor, metres, sizeCanvas,
+    isWrapBoard, describeWrapSize, unwrapX
 } from './board-client';
 import { createSaveControls } from './save-controls';
 import { createRecoveryUI } from './recovery-ui';
@@ -40,7 +41,13 @@ let size = 10;
 let clearing = false;
 
 // Every whiteboard in the room has its own canvas; only the current one is
-// shown. boards[boardId] = { canvas, context2D, background, loaded }.
+// shown. boards[boardId] = { canvas, context2D, background, loaded, el, wrap, offset }.
+//
+// `canvas` holds the board itself. For flat boards it is also what's on the
+// page (`el`). A 360-degree board is a panorama whose left and right edges
+// join up: its canvas stays off the page and `el` is a second canvas showing
+// it turned by `offset` pixels (the Turn buttons), so any part of the wall,
+// including the join, can be brought to the middle of the screen.
 const boards = {};
 const canvasHolder = document.getElementById('canvas-holder');
 const tabList = document.getElementById('board-tab-list');
@@ -51,6 +58,7 @@ let boardId = null;             // the board shown and drawn on
 let boardName = '';
 let canvas = null;              // current board's canvas
 let context2D = null;
+let viewEl = null;              // what's on the page for the current board (see above)
 
 const controls = createSaveControls({
     socket: socket,
@@ -70,19 +78,68 @@ const controls = createSaveControls({
     }
 });
 
-function boardFor(bid, width, height) {
+function boardFor(bid, width, height, shape) {
     if (boards[bid]) return boards[bid];
+    const wrap = shape === 'cylinder';
     const c = document.createElement('canvas');
     c.width = width || DEFAULT_WIDTH;
     c.height = height || DEFAULT_HEIGHT;
-    c.className = 'board-canvas hidden';
-    c.dataset.board = bid;
-    canvasHolder.appendChild(c);
-    attachDrawing(c);
-    const b = { canvas: c, context2D: c.getContext('2d'), background: DEFAULT_BACKGROUND, loaded: false };
+    let el = c;
+    if (wrap) {
+        el = document.createElement('canvas');
+        el.width = c.width;
+        el.height = c.height;
+    }
+    el.className = 'board-canvas hidden' + (wrap ? ' wrap-board' : '');
+    el.dataset.board = bid;
+    canvasHolder.appendChild(el);
+    attachDrawing(el);
+    const b = {
+        canvas: c, context2D: c.getContext('2d'), background: DEFAULT_BACKGROUND, loaded: false,
+        el: el, wrap: wrap, offset: 0, viewPending: false
+    };
     clearCanvas(b.context2D, c, b.background);
     boards[bid] = b;
+    refreshView(b);
     return b;
+}
+
+// How far a 360-degree board's edges are apart (0 for flat boards).
+function wrapWidth(b) {
+    return b && b.wrap ? b.canvas.width : 0;
+}
+
+// Redraw what's on the page for a 360-degree board (once per frame at most).
+function refreshView(b) {
+    if (!b.wrap || b.viewPending) return;
+    b.viewPending = true;
+    window.requestAnimationFrame(() => {
+        b.viewPending = false;
+        const w = b.canvas.width;
+        const h = b.canvas.height;
+        const off = ((b.offset % w) + w) % w;
+        const ctx = b.el.getContext('2d');
+        // Board x = view x + offset (wrapping round).
+        ctx.drawImage(b.canvas, off, 0, w - off, h, 0, 0, w - off, h);
+        if (off > 0) ctx.drawImage(b.canvas, 0, 0, off, h, w - off, 0, off, h);
+        // Small tags at the top: where "in front" and "behind" are in VR.
+        ctx.save();
+        const fs = Math.round(h / 28);   // readable when the whole panorama fits the screen
+        ctx.font = 'bold ' + fs + 'px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        [[w / 2, 'front (in VR)'], [0, 'behind (edges join here)']].forEach(([bx, text]) => {
+            const vx = ((bx - off) % w + w) % w;
+            const tagW = ctx.measureText(text).width + fs;
+            const x = Math.min(w - tagW / 2, Math.max(tagW / 2, vx));
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.fillRect(x - tagW / 2, 4, tagW, fs * 1.4);
+            ctx.fillStyle = '#7a8794';
+            ctx.fillText(text, x, 4 + fs * 0.2);
+            ctx.fillRect(vx - 3, 4 + fs * 1.4, 6, fs);
+        });
+        ctx.restore();
+    });
 }
 
 // Show one board and point Save / Rename / Export / Erase at it.
@@ -92,15 +149,17 @@ function showBoard(bid) {
     boardId = bid;
     lastX = null;
     lastY = null;
-    Object.keys(boards).forEach((k) => boards[k].canvas.classList.toggle('hidden', k !== bid));
+    Object.keys(boards).forEach((k) => boards[k].el.classList.toggle('hidden', k !== bid));
     canvas = boards[bid].canvas;
     context2D = boards[bid].context2D;
+    viewEl = boards[bid].el;
     controls.setBoard(bid);
     const url = 'index.html?room=' + encodeURIComponent(room) + (bid === 'main' ? '' : '&board=' + encodeURIComponent(bid));
     if (window.history && window.history.replaceState) window.history.replaceState(null, '', url);
     document.getElementById('vr-button').href = 'vr.html?room=' + room + (bid === 'main' ? '' : '&board=' + encodeURIComponent(bid));
     renderTabs();
     updateSizeButton();
+    updateWrapControls();
     onResize();
 }
 
@@ -114,7 +173,7 @@ function renderTabs() {
             (info.named === false ? ' temporary' : '') + (info.dirty && info.named === false ? ' unsaved' : '');
         tab.setAttribute('role', 'tab');
         tab.setAttribute('aria-selected', bid === boardId ? 'true' : 'false');
-        tab.textContent = info.name;
+        tab.textContent = (info.shape === 'cylinder' ? '360\u00b0 ' : '') + info.name;
         tab.title = info.name + (info.named === false ? ' (temporary name, not saved yet)' : '');
         tab.addEventListener('click', () => showBoard(bid));
         tabList.appendChild(tab);
@@ -140,12 +199,14 @@ socket.on('connect', () => {
 
 socket.on('boardState', (state) => {
     if (normalizeRoom(state.room) !== room) return;
-    const b = boardFor(state.board, state.width, state.height);
+    const b = boardFor(state.board, state.width, state.height, state.shape);
     b.background = state.background || DEFAULT_BACKGROUND;
     // The board may have been resized (by anyone); resizing the canvas wipes
     // it, and the replay below redraws everything.
     const resized = sizeCanvas(b.canvas, state.width, state.height);
+    if (resized && b.wrap) sizeCanvas(b.el, state.width, state.height);
     replayBoard(b.context2D, b.canvas, state);
+    refreshView(b);
     b.loaded = true;
     if (resized && state.board === boardId) {
         lastX = null;
@@ -167,16 +228,18 @@ socket.on('remoteEraseAll', (remoteEraseAllObject) => {
     }
 });
 
-document.getElementById('add-board').addEventListener('click', () => {
-    socket.emit('addBoard', { room: room }, (result) => {
+function addBoard(shape) {
+    socket.emit('addBoard', { room: room, shape: shape }, (result) => {
         if (result && result.ok) {
             showBoard(result.board);
-            controls.setStatus('Added “' + result.name + '”');
+            controls.setStatus('Added ' + (result.shape === 'cylinder' ? '360° board ' : '') + '“' + result.name + '”');
         } else {
             controls.setStatus((result && result.error) || 'Could not add a whiteboard.', true);
         }
     });
-});
+}
+document.getElementById('add-board').addEventListener('click', () => addBoard('flat'));
+document.getElementById('add-wrap-board').addEventListener('click', () => addBoard('cylinder'));
 
 // ---- Remove whiteboard: needs three clicks in a row ----
 const removeButton = document.getElementById('remove-board');
@@ -214,7 +277,7 @@ function updateRemoveButton() {
 socket.on('boardRemoved', (msg) => {
     if (!msg || normalizeRoom(msg.room) !== room || !boards[msg.board]) return;
     const index = boardOrder.indexOf(msg.board);
-    boards[msg.board].canvas.remove();
+    boards[msg.board].el.remove();
     delete boards[msg.board];
     boardOrder = boardOrder.filter((b) => b !== msg.board);
     if (boardId === msg.board) {
@@ -231,7 +294,9 @@ function eraseAllRemote(eraseAllRemoteObject) {
         return;
     }
     const b = boards[eraseAllRemoteObject.board || 'main'];
-    if (b) clearCanvas(b.context2D, b.canvas, b.background);
+    if (!b) return;
+    clearCanvas(b.context2D, b.canvas, b.background);
+    refreshView(b);
 }
 
 function drawRemote(remoteDrawObject) {
@@ -239,7 +304,9 @@ function drawRemote(remoteDrawObject) {
         return;
     }
     const b = boards[remoteDrawObject.board || 'main'];
-    if (b) drawSegment(b.context2D, remoteDrawObject, b.background);
+    if (!b) return;
+    drawSegment(b.context2D, remoteDrawObject, b.background, wrapWidth(b));
+    refreshView(b);
 }
 
 function draw (x, y) {
@@ -277,14 +344,24 @@ function canvasPoint(c, pageX, pageY) {
     ];
 }
 
+// Board position under a mouse/touch point on the page. On a 360-degree
+// board the view is turned by the board's offset, and x is kept next to the
+// last point so a stroke can carry on over the join.
+function boardPoint(c, pageX, pageY) {
+    const p = canvasPoint(c, pageX, pageY);
+    const b = boards[boardId];
+    if (b && b.wrap) p[0] = unwrapX(p[0] + b.offset, lastX, b.canvas.width);
+    return p;
+}
+
 function attachDrawing(c) {
     c.addEventListener('mousemove', (evt) => {
         evt.preventDefault();
-        const p = canvasPoint(c, evt.pageX, evt.pageY);
+        const p = boardPoint(c, evt.pageX, evt.pageY);
         draw(p[0], p[1]);
     });
     c.addEventListener('mousedown', (evt) => {
-        const p = canvasPoint(c, evt.pageX, evt.pageY);
+        const p = boardPoint(c, evt.pageX, evt.pageY);
         lastX = p[0];
         lastY = p[1];
     });
@@ -294,13 +371,13 @@ function attachDrawing(c) {
     });
     c.addEventListener('touchstart', (evt) => {
         evt.preventDefault();
-        const p = canvasPoint(c, evt.targetTouches[0].pageX, evt.targetTouches[0].pageY);
+        const p = boardPoint(c, evt.targetTouches[0].pageX, evt.targetTouches[0].pageY);
         lastX = p[0];
         lastY = p[1];
     }, false);
     c.addEventListener('touchmove', (evt) => {
         evt.preventDefault();
-        const p = canvasPoint(c, evt.targetTouches[0].pageX, evt.targetTouches[0].pageY);
+        const p = boardPoint(c, evt.targetTouches[0].pageX, evt.targetTouches[0].pageY);
         draw(p[0], p[1]);
     }, true);
     c.addEventListener('touchend', (evt) => {
@@ -356,8 +433,8 @@ function onResize() {
     // Stop zooming in at 2 screen pixels per board pixel.
     const maxZoom = Math.max(1, 2 * canvas.width / fitWidth);
     if (zoom > maxZoom) zoom = maxZoom;
-    canvas.style.width = Math.round(fitWidth * zoom) + "px";
-    canvas.style.height = Math.round(fitHeight * zoom) + "px";
+    viewEl.style.width = Math.round(fitWidth * zoom) + "px";
+    viewEl.style.height = Math.round(fitHeight * zoom) + "px";
     document.body.classList.toggle('zoomed', zoom > 1);
     zoomOutButton.disabled = zoom <= 1;
     zoomFitButton.disabled = zoom <= 1;
@@ -369,12 +446,12 @@ function onResize() {
 // Zoom around the middle of the screen, keeping that spot in view.
 function setZoom(newZoom) {
     if (!canvas || newZoom === zoom) return;
-    const before = canvas.getBoundingClientRect();
+    const before = viewEl.getBoundingClientRect();
     const cx = (window.innerWidth / 2 - before.left) / before.width;
     const cy = (window.innerHeight / 2 - before.top) / before.height;
     zoom = newZoom;
     onResize();
-    const after = canvas.getBoundingClientRect();
+    const after = viewEl.getBoundingClientRect();
     canvasHolder.scrollLeft += after.left + cx * after.width - window.innerWidth / 2;
     window.scrollBy(0, after.top + cy * after.height - window.innerHeight / 2);
 }
@@ -403,8 +480,40 @@ const sizeError = document.getElementById('size-error');
 
 function updateSizeButton() {
     if (!canvas) return;
-    sizeButton.textContent = 'Size: ' + describeSize(canvas.width, canvas.height);
+    const wrap = boards[boardId] && boards[boardId].wrap;
+    sizeButton.textContent = wrap ? '360°: ' + describeWrapSize(canvas.width, canvas.height)
+        : 'Size: ' + describeSize(canvas.width, canvas.height);
+    sizeButton.disabled = !!wrap;
+    sizeButton.title = wrap ? '360° boards have a fixed size' : 'Change the size of this whiteboard (for everyone)';
 }
+
+// ---- 360-degree boards: turn the panorama ----
+const wrapControls = document.getElementById('wrap-controls');
+const TURN_STEPS = 8; // one press turns the view an eighth of the way round (45 degrees)
+
+function updateWrapControls() {
+    const b = boards[boardId];
+    wrapControls.classList.toggle('hidden', !(b && b.wrap));
+}
+
+function turnView(direction) {
+    const b = boards[boardId];
+    if (!b || !b.wrap) return;
+    const w = b.canvas.width;
+    b.offset = (((b.offset + direction * w / TURN_STEPS) % w) + w) % w;
+    lastX = null;
+    lastY = null;
+    refreshView(b);
+}
+document.getElementById('turn-left').addEventListener('click', () => turnView(-1));
+document.getElementById('turn-right').addEventListener('click', () => turnView(1));
+document.getElementById('turn-front').addEventListener('click', () => {
+    const b = boards[boardId];
+    if (!b || !b.wrap) return;
+    b.offset = 0;
+    lastX = null;
+    refreshView(b);
+});
 
 function enteredSize() {
     return {

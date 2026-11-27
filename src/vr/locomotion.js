@@ -97,6 +97,26 @@ export function createLocomotion(options) {
         rig.object3D.rotation.y += angle;
     }
 
+    // Turn the rig around the head so the head faces world yaw `yaw` (degrees,
+    // 0 = looking along -z, 90 = looking along -x).
+    function faceYaw(yaw) {
+        camera.object3D.updateWorldMatrix(true, false);
+        const q = new THREE.Quaternion();
+        camera.object3D.getWorldQuaternion(q);
+        const f = new THREE.Vector3(0, 0, -1).applyQuaternion(q);
+        const now = Math.atan2(-f.x, -f.z);
+        const angle = yaw * Math.PI / 180 - now;
+        const head = headWorld();
+        const p = rig.object3D.position;
+        const dx = p.x - head.x;
+        const dz = p.z - head.z;
+        const cos = Math.cos(angle);
+        const sin = Math.sin(angle);
+        p.x = head.x + dx * cos + dz * sin;
+        p.z = head.z - dx * sin + dz * cos;
+        rig.object3D.rotation.y += angle;
+    }
+
     // ---- Teleport arc ----
 
     const arcPositions = new Float32Array(ARC_POINTS * 3);
@@ -279,6 +299,14 @@ export function createLocomotion(options) {
         backToStart: backToStart,
         // For tests and the desktop page.
         snapTurn: snapTurn,
-        teleportTo: (x, z) => putHeadAt(x, z)
+        teleportTo: (x, z) => putHeadAt(x, z),
+        // Jump to (x, z) looking towards world yaw `yaw` (e.g. into a 360-degree board).
+        goTo: (x, z, yaw) => {
+            stopAiming(false);
+            if (yaw != null) faceYaw(yaw);
+            putHeadAt(x, z);
+        },
+        // Where the head is now, in world coordinates.
+        headPosition: headWorld
     };
 }
