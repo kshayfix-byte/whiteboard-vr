@@ -1,3 +1,10 @@
+// Webpack 4 hashes with md4, which newer Node versions (17+) no longer ship.
+// Map it to sha256 so the build works on both old and current Node.
+const crypto = require("crypto");
+const originalCreateHash = crypto.createHash;
+crypto.createHash = (algorithm, ...rest) =>
+  originalCreateHash(algorithm === "md4" ? "sha256" : algorithm, ...rest);
+
 module.exports = {
   devtool: "none",
   entry: "./src/index.js",

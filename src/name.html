@@ -1,0 +1,35 @@
+<html>
+  <head>
+    <title>Name whiteboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+      body { margin: 0; font-family: sans-serif; background: #EEF8FD; color: #222; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 16px; box-sizing: border-box; }
+      form { background: white; border-radius: 16px; padding: 28px; width: 100%; max-width: 440px; box-shadow: 0 4px 24px rgba(0,0,0,0.12); box-sizing: border-box; }
+      h1 { margin: 0 0 6px 0; font-size: 24px; }
+      p { margin: 0 0 18px 0; color: #555; line-height: 1.4; }
+      label { display: block; font-weight: bold; margin-bottom: 8px; }
+      input { width: 100%; box-sizing: border-box; font-size: 22px; padding: 12px; border: 2px solid #999; border-radius: 10px; }
+      input:focus { outline: none; border-color: rgb(3,181,148); }
+      .actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; }
+      button { font-size: 18px; padding: 0.6em 1.4em; border-radius: 10px; border: 2px solid gray; background: white; color: #444; cursor: pointer; }
+      button.primary { background: rgb(3,181,148); border-color: rgb(3,181,148); color: white; }
+      button:disabled { opacity: 0.5; cursor: default; }
+      #message { margin-top: 14px; min-height: 1.4em; }
+      #message.error { color: #c0392b; }
+      #message.ok { color: rgb(3,140,115); font-weight: bold; }
+    </style>
+  </head>
+  <body>
+    <form id="name-form">
+      <h1 id="heading">Name this whiteboard</h1>
+      <p id="current">Loading&hellip;</p>
+      <label for="name-input">Name</label>
+      <input id="name-input" maxlength="80" autocomplete="off" autofocus>
+      <div class="actions">
+        <button type="button" id="close-button">Close</button>
+        <button type="submit" class="primary" id="save-button" disabled>Save</button>
+      </div>
+      <div id="message" role="status"></div>
+    </form>
+  </body>
+</html>

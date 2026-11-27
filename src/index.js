@@ -1,4 +1,10 @@
 import io from 'socket.io-client';
+import {
+    DEFAULT_BACKGROUND, normalizeRoom, clearCanvas, drawSegment, replayBoard,
+    exportFilename, downloadCanvas, formatDate
+} from './board-client';
+import { createSaveControls } from './save-controls';
+import { createRecoveryUI } from './recovery-ui';
 
 function getParameterByName(name, url) {
     if (!url) url = window.location.href;
@@ -10,8 +16,8 @@ function getParameterByName(name, url) {
     return decodeURIComponent(results[2].replace(/\+/g, ' '));
 }
 
-let room = getParameterByName('room');
-if (room != null) {
+let room = normalizeRoom(getParameterByName('room'));
+if (room) {
     const vrButton = document.getElementById('vr-button');
     vrButton.href = "vr.html?room="+room;
     const roomNumber = document.getElementById('room-number');
@@ -26,7 +32,10 @@ const socket = io();
 let id = Math.floor(Math.random() * 100000000);
 let lastX = null;
 let lastY = null;
-let background = "#EEF8FD";
+let background = DEFAULT_BACKGROUND;
+let boardId = 'main'; // the "add whiteboard" feature will switch this
+let boardName = '';
+let loaded = false;
 let color = "#000000";
 let size = 10;
 let clearing = false;
@@ -40,8 +49,37 @@ canvas.height = canvasHeight;
 const context2D = canvas.getContext( "2d" );
 
 // draw background
-context2D.fillStyle = background;
-context2D.fillRect(0, 0, canvas.width, canvas.height); 
+clearCanvas(context2D, canvas, background);
+
+createSaveControls({
+    socket: socket,
+    room: room,
+    boardId: boardId,
+    elements: {
+        name: document.getElementById('board-name'),
+        state: document.getElementById('board-state'),
+        status: document.getElementById('save-status'),
+        save: document.getElementById('save-board'),
+        rename: document.getElementById('rename-board'),
+        saveAll: document.getElementById('save-all')
+    },
+    onChange: (board) => {
+        boardName = board ? board.name : '';
+        document.title = (boardName ? boardName + ' - ' : '') + 'Whiteboard VR';
+    }
+});
+
+// Ask the server for the current board on every (re)connect.
+socket.on('connect', () => {
+    socket.emit('join', { room: room, board: boardId });
+});
+
+socket.on('boardState', (state) => {
+    if (normalizeRoom(state.room) !== room) return;
+    background = state.background || DEFAULT_BACKGROUND;
+    replayBoard(context2D, canvas, state);
+    loaded = true;
+});
 
 socket.on('remoteDraw', (remoteDrawObject) => {
     if (remoteDrawObject.id != id) {
@@ -61,35 +99,22 @@ canvas.addEventListener('mousedown', onMouseDown);
 canvas.addEventListener('mouseup', onMouseUp);
 
 function eraseAllRemote(eraseAllRemoteObject) {
-    if (room != eraseAllRemoteObject.room) {
+    if (room != normalizeRoom(eraseAllRemoteObject.room)) {
         return;
     }
-    context2D.fillStyle = background;
-    context2D.fillRect(0, 0, canvas.width, canvas.height);     
+    clearCanvas(context2D, canvas, background);
 }
 
 function drawRemote(remoteDrawObject) {
-    if (room != remoteDrawObject.room) {
+    if (room != normalizeRoom(remoteDrawObject.room)) {
         return;
     }
-    if (remoteDrawObject.lastX != null && remoteDrawObject.lastY != null) {            
-        context2D.beginPath();
-        context2D.strokeStyle = remoteDrawObject.color;
-        if (remoteDrawObject.clearing) {
-            context2D.strokeStyle = background;
-        }
-        context2D.lineJoin = 'round';
-        context2D.lineWidth = remoteDrawObject.size;
-        context2D.moveTo(remoteDrawObject.lastX, remoteDrawObject.lastY);
-        context2D.lineTo(remoteDrawObject.x, remoteDrawObject.y);
-        context2D.closePath();
-        context2D.stroke();
-        
-    }
+    drawSegment(context2D, remoteDrawObject, background);
 }
 
 function draw (x, y) {
-    if (lastX != null && lastY != null) {        
+    // Don't draw until the saved board has loaded, so nothing gets painted over.
+    if (loaded && lastX != null && lastY != null) {        
         var drawObject= {};
         drawObject.id = id;
         drawObject.lastX = lastX;
@@ -98,7 +123,8 @@ function draw (x, y) {
         drawObject.y = y;
         drawObject.color = color;
         drawObject.room = room;
-        drawObject.size = size;
+        drawObject.board = boardId;
+        drawObject.size = Number(size);
         drawObject.clearing = clearing;
         socket.emit('draw', drawObject);
         drawRemote(drawObject);
@@ -196,17 +222,76 @@ function onResize() {
 
 onResize()
 
-let saveBoard = document.getElementById('save-board');
-saveBoard.addEventListener('click', () => {
-    document.getElementById("save-board").href = document.getElementById("canvas").toDataURL();
-    document.getElementById("save-board").download = "whiteboard.png";
+let exportImage = document.getElementById('export-image');
+exportImage.addEventListener('click', () => {
+    downloadCanvas(canvas, exportFilename(boardName, room));
 })
+
+
+const boardsOverlay = document.getElementById('boards-overlay');
+const boardsList = document.getElementById('boards-list');
+
+function renderBoardList(boards) {
+    boardsList.innerHTML = '';
+    if (!boards.length) {
+        const empty = document.createElement('p');
+        empty.textContent = 'No saved boards yet. Press Save to keep a whiteboard.';
+        boardsList.appendChild(empty);
+        return;
+    }
+    boards.forEach((b) => {
+        const row = document.createElement('div');
+        row.className = 'board-row' + (b.room === room && b.board === boardId ? ' current' : '');
+        const info = document.createElement('div');
+        const title = document.createElement('div');
+        title.className = 'board-title';
+        title.textContent = b.name || 'Untitled board';
+        const meta = document.createElement('div');
+        meta.className = 'board-meta';
+        meta.textContent = 'Room ' + b.room + ' \u00b7 saved ' + formatDate(b.savedAt);
+        info.appendChild(title);
+        info.appendChild(meta);
+        const links = document.createElement('div');
+        const open2d = document.createElement('a');
+        open2d.className = 'button';
+        open2d.href = 'index.html?room=' + encodeURIComponent(b.room);
+        open2d.textContent = 'Open';
+        const openVr = document.createElement('a');
+        openVr.className = 'button';
+        openVr.href = 'vr.html?room=' + encodeURIComponent(b.room);
+        openVr.textContent = 'Open in VR';
+        links.appendChild(open2d);
+        links.appendChild(openVr);
+        row.appendChild(info);
+        row.appendChild(links);
+        boardsList.appendChild(row);
+    });
+}
+
+let savedBoards = document.getElementById('saved-boards');
+savedBoards.addEventListener('click', () => {
+    boardsList.textContent = 'Loading\u2026';
+    boardsOverlay.classList.remove('hidden');
+    fetch('/api/boards')
+        .then((res) => res.json())
+        .then((data) => renderBoardList(data.boards || []))
+        .catch(() => { boardsList.textContent = 'Could not load saved boards.'; });
+})
+document.getElementById('close-boards').addEventListener('click', () => {
+    boardsOverlay.classList.add('hidden');
+});
+boardsOverlay.addEventListener('click', (e) => {
+    if (e.target === boardsOverlay) {
+        boardsOverlay.classList.add('hidden');
+    }
+});
 
 let eraseAll = document.getElementById('erase-all');
 eraseAll.addEventListener('click', () => {
     var eraseAllObject= {};
     eraseAllObject.id = id;
     eraseAllObject.room = room;
+    eraseAllObject.board = boardId;
     socket.emit('eraseAll', eraseAllObject);
     eraseAllRemote(eraseAllObject);
 })
@@ -221,6 +306,16 @@ joinRoom.addEventListener('click', () => {
         window.location.href = "index.html?room="+enteredRoom;
       }
 })
+
+// Offer to restore unsaved whiteboards left over from a crash or restart.
+const recovery = createRecoveryUI({ room: room, page: 'index.html' });
+const recoverButton = document.getElementById('recover-boards');
+recovery.onCount((n) => {
+    recoverButton.classList.toggle('hidden', !n);
+    recoverButton.textContent = 'Restore unsaved (' + n + ')';
+});
+recoverButton.addEventListener('click', () => recovery.open());
+recovery.check(true);
 
 const overlay = document.querySelector(".overlay");
 const startButton = document.querySelector("#start-button");

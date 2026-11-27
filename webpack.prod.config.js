@@ -14,7 +14,8 @@ module.exports = merge(common, {
   devtool: "none",
   entry: {
     desktop: "./src/index.js",
-    vr: "./src/vr.js"
+    vr: "./src/vr.js",
+    name: "./src/name.js"
   },
   output: {
     filename: "[name].[contentHash].bundle.js",
@@ -40,5 +41,11 @@ module.exports = merge(common, {
     template: "./src/vr.html",
     filename: "vr.html",
     inject: 'head'
+  }),
+  new HtmlWebpackPlugin({
+    chunks: ['name'],
+    template: "./src/name.html",
+    filename: "name.html",
+    inject: 'body'
   })]
 });

@@ -1,31 +1,17 @@
-
 const express = require('express');
-const port = process.env.PORT || 3000
+const port = process.env.PORT || 3000;
 const app = express();
 const fs = require('fs');
 const http = require('https').createServer({
     key: fs.readFileSync('./key.pem'),
     cert: fs.readFileSync('./cert.pem'),
-    passphrase: 'marlon'
+    passphrase: process.env.SSL_PASSPHRASE || 'marlon'
 }, app);
 const io = require('socket.io')(http);
+const { setup } = require('./lib/realtime');
 
-app.use(express.static('dist'));
-
-app.get('/', (req, res) => {
-  res.render('index.html');
-});
-
-io.on('connection', (socket) => {
-  console.log('a user connected');
-  socket.on('draw', function (obj) {
-    io.emit('remoteDraw', obj, { for: 'everyone' });
-  });
-  socket.on('eraseAll', function (obj) {
-    io.emit('remoteEraseAll', obj, { for: 'everyone' });
-  });
-});
+setup(app, io);
 
 http.listen(port, () => {
-  console.log('server running at :3000');
+  console.log('server running at :' + port);
 });
