@@ -1,7 +1,9 @@
 import io from 'socket.io-client';
 import {
     DEFAULT_BACKGROUND, normalizeRoom, clearCanvas, drawSegment, replayBoard,
-    exportFilename, downloadCanvas, formatDate
+    exportFilename, downloadCanvas, formatDate,
+    BOARD_SIZES, SIZE_LIMITS, PX_PER_METRE, DEFAULT_WIDTH, DEFAULT_HEIGHT,
+    describeSize, presetFor, metres, sizeCanvas
 } from './board-client';
 import { createSaveControls } from './save-controls';
 import { createRecoveryUI } from './recovery-ui';
@@ -71,8 +73,8 @@ const controls = createSaveControls({
 function boardFor(bid, width, height) {
     if (boards[bid]) return boards[bid];
     const c = document.createElement('canvas');
-    c.width = width || 1500;
-    c.height = height || 1000;
+    c.width = width || DEFAULT_WIDTH;
+    c.height = height || DEFAULT_HEIGHT;
     c.className = 'board-canvas hidden';
     c.dataset.board = bid;
     canvasHolder.appendChild(c);
@@ -86,7 +88,7 @@ function boardFor(bid, width, height) {
 // Show one board and point Save / Rename / Export / Erase at it.
 function showBoard(bid) {
     if (!boards[bid]) return;
-    if (bid !== boardId) removeGuard.reset(); // only runs after load, once removeGuard exists
+    if (bid !== boardId) { removeGuard.reset(); zoom = 1; } // only runs after load, once removeGuard exists
     boardId = bid;
     lastX = null;
     lastY = null;
@@ -98,6 +100,7 @@ function showBoard(bid) {
     if (window.history && window.history.replaceState) window.history.replaceState(null, '', url);
     document.getElementById('vr-button').href = 'vr.html?room=' + room + (bid === 'main' ? '' : '&board=' + encodeURIComponent(bid));
     renderTabs();
+    updateSizeButton();
     onResize();
 }
 
@@ -139,8 +142,17 @@ socket.on('boardState', (state) => {
     if (normalizeRoom(state.room) !== room) return;
     const b = boardFor(state.board, state.width, state.height);
     b.background = state.background || DEFAULT_BACKGROUND;
+    // The board may have been resized (by anyone); resizing the canvas wipes
+    // it, and the replay below redraws everything.
+    const resized = sizeCanvas(b.canvas, state.width, state.height);
     replayBoard(b.context2D, b.canvas, state);
     b.loaded = true;
+    if (resized && state.board === boardId) {
+        lastX = null;
+        lastY = null;
+        onResize();
+    }
+    if (state.board === boardId) updateSizeButton();
 });
 
 socket.on('remoteDraw', (remoteDrawObject) => {
@@ -244,6 +256,8 @@ function draw (x, y) {
         drawObject.board = boardId;
         drawObject.size = Number(size);
         drawObject.clearing = clearing;
+        drawObject.bw = canvas.width;   // board size this stroke was drawn on
+        drawObject.bh = canvas.height;
         socket.emit('draw', drawObject);
         drawRemote(drawObject);
         lastX = x;
@@ -251,11 +265,15 @@ function draw (x, y) {
     }
 }
 
-// Position of a mouse/touch point in the canvas's own pixels.
+// Position of a mouse/touch point in the canvas's own pixels. Uses the
+// on-screen box, so it works when the page is scrolled or zoomed.
 function canvasPoint(c, pageX, pageY) {
+    const rect = c.getBoundingClientRect();
+    const x = pageX - window.pageXOffset - rect.left;
+    const y = pageY - window.pageYOffset - rect.top;
     return [
-        (pageX - c.offsetLeft) * (c.width / c.clientWidth),
-        (pageY - c.offsetTop) * (c.height / c.clientHeight)
+        x * (c.width / rect.width),
+        y * (c.height / rect.height)
     ];
 }
 
@@ -317,18 +335,143 @@ eraser.addEventListener("change", (evt) => {
 
 window.addEventListener('resize', onResize)
 
+// Zoom: 1 fits the whole board on screen (as before); bigger values make the
+// board larger than the screen and the page scrolls.
+const ZOOM_LEVELS = [1, 1.5, 2, 3, 4, 6];
+let zoom = 1;
+const zoomInButton = document.getElementById('zoom-in');
+const zoomOutButton = document.getElementById('zoom-out');
+const zoomFitButton = document.getElementById('zoom-fit');
+
 function onResize() {
     if (!canvas) return;
     const ratio = canvas.width / canvas.height; // 1.5 for the standard board
-    canvas.style.width = "94%";
-    const height = canvas.clientWidth / ratio;
-    if (height > window.innerHeight * 0.9) {
-        canvas.style.height = window.innerHeight - 150 + "px";
-        canvas.style.width = canvas.clientHeight * ratio + "px";
-    } else {
-        canvas.style.height = canvas.clientWidth / ratio + "px";
+    // Size that fits the screen (the original behaviour).
+    let fitWidth = document.documentElement.clientWidth * 0.94;
+    let fitHeight = fitWidth / ratio;
+    if (fitHeight > window.innerHeight * 0.9) {
+        fitHeight = Math.max(100, window.innerHeight - 150);
+        fitWidth = fitHeight * ratio;
     }
+    // Stop zooming in at 2 screen pixels per board pixel.
+    const maxZoom = Math.max(1, 2 * canvas.width / fitWidth);
+    if (zoom > maxZoom) zoom = maxZoom;
+    canvas.style.width = Math.round(fitWidth * zoom) + "px";
+    canvas.style.height = Math.round(fitHeight * zoom) + "px";
+    document.body.classList.toggle('zoomed', zoom > 1);
+    zoomOutButton.disabled = zoom <= 1;
+    zoomFitButton.disabled = zoom <= 1;
+    zoomInButton.disabled = zoom >= maxZoom;
+    zoomFitButton.textContent = zoom > 1 ? Math.round(zoom * 100) + '%' : 'Fit';
+    zoomFitButton.title = zoom > 1 ? 'Zoomed to ' + Math.round(zoom * 100) + '%. Click to fit the whole board on screen.' : 'The whole board fits on screen';
 }
+
+// Zoom around the middle of the screen, keeping that spot in view.
+function setZoom(newZoom) {
+    if (!canvas || newZoom === zoom) return;
+    const before = canvas.getBoundingClientRect();
+    const cx = (window.innerWidth / 2 - before.left) / before.width;
+    const cy = (window.innerHeight / 2 - before.top) / before.height;
+    zoom = newZoom;
+    onResize();
+    const after = canvas.getBoundingClientRect();
+    canvasHolder.scrollLeft += after.left + cx * after.width - window.innerWidth / 2;
+    window.scrollBy(0, after.top + cy * after.height - window.innerHeight / 2);
+}
+
+zoomInButton.addEventListener('click', () => {
+    const next = ZOOM_LEVELS.find((z) => z > zoom + 0.01);
+    setZoom(next || ZOOM_LEVELS[ZOOM_LEVELS.length - 1]);
+});
+zoomOutButton.addEventListener('click', () => {
+    const lower = ZOOM_LEVELS.filter((z) => z < zoom - 0.01);
+    setZoom(lower.length ? lower[lower.length - 1] : 1);
+});
+zoomFitButton.addEventListener('click', () => {
+    setZoom(1);
+    canvasHolder.scrollLeft = 0;
+    window.scrollTo(0, 0);
+});
+
+// ---- Board size ----
+const sizeButton = document.getElementById('board-size');
+const sizeOverlay = document.getElementById('size-overlay');
+const sizePresets = document.getElementById('size-presets');
+const sizeWidth = document.getElementById('size-width');
+const sizeHeight = document.getElementById('size-height');
+const sizeError = document.getElementById('size-error');
+
+function updateSizeButton() {
+    if (!canvas) return;
+    sizeButton.textContent = 'Size: ' + describeSize(canvas.width, canvas.height);
+}
+
+function enteredSize() {
+    return {
+        width: Math.round(Number(sizeWidth.value) * PX_PER_METRE),
+        height: Math.round(Number(sizeHeight.value) * PX_PER_METRE)
+    };
+}
+
+function markPreset() {
+    const entered = enteredSize();
+    const match = presetFor(entered.width, entered.height);
+    Array.prototype.forEach.call(sizePresets.children, (btn) => {
+        btn.classList.toggle('selected', !!match && btn.dataset.size === match.id);
+    });
+}
+
+BOARD_SIZES.forEach((preset) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.dataset.size = preset.id;
+    btn.textContent = preset.label + ' (' + describeSize(preset.width, preset.height) + ')';
+    btn.addEventListener('click', () => {
+        sizeWidth.value = metres(preset.width);
+        sizeHeight.value = metres(preset.height);
+        sizeError.textContent = '';
+        markPreset();
+    });
+    sizePresets.appendChild(btn);
+});
+sizeWidth.addEventListener('input', markPreset);
+sizeHeight.addEventListener('input', markPreset);
+
+sizeButton.addEventListener('click', () => {
+    if (!canvas) return;
+    document.getElementById('size-board-name').textContent = boardName ? '“' + boardName + '”' : 'this whiteboard';
+    sizeWidth.value = metres(canvas.width);
+    sizeHeight.value = metres(canvas.height);
+    sizeError.textContent = '';
+    markPreset();
+    sizeOverlay.classList.remove('hidden');
+});
+
+function closeSize() {
+    sizeOverlay.classList.add('hidden');
+}
+document.getElementById('size-cancel').addEventListener('click', closeSize);
+sizeOverlay.addEventListener('click', (e) => { if (e.target === sizeOverlay) closeSize(); });
+
+document.getElementById('size-apply').addEventListener('click', () => {
+    const size = enteredSize();
+    if (!(size.width >= SIZE_LIMITS.minWidth && size.width <= SIZE_LIMITS.maxWidth &&
+          size.height >= SIZE_LIMITS.minHeight && size.height <= SIZE_LIMITS.maxHeight)) {
+        sizeError.textContent = 'Width must be ' + metres(SIZE_LIMITS.minWidth) + '–' + metres(SIZE_LIMITS.maxWidth) +
+            ' m and height ' + metres(SIZE_LIMITS.minHeight) + '–' + metres(SIZE_LIMITS.maxHeight) + ' m.';
+        return;
+    }
+    const bid = boardId;
+    socket.emit('resizeBoard', { room: room, board: bid, width: size.width, height: size.height }, (result) => {
+        if (result && result.ok) {
+            closeSize();
+            if (bid === boardId) { zoom = 1; onResize(); canvasHolder.scrollLeft = 0; window.scrollTo(0, 0); }
+            if (!result.unchanged) controls.setStatus('Board is now ' + describeSize(result.width, result.height));
+        } else {
+            sizeError.textContent = (result && result.error) || 'Could not change the size.';
+        }
+    });
+});
 
 onResize()
 

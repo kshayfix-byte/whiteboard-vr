@@ -254,3 +254,71 @@ button:disabled, button:disabled:hover {
     color: white;
     background: #c0392b;
 }
+
+/* Board size and zoom */
+.board-view-controls {
+    display: flex;
+    gap: 6px;
+    margin-left: auto;
+    padding-left: 12px;
+}
+.board-view-controls button {
+    min-width: 2.2em;
+}
+.size-presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 10px 0 16px 0;
+}
+.size-presets button {
+    margin: 0;
+}
+.size-presets button.selected, .size-presets button.selected:hover {
+    background: rgb(3, 181, 148);
+    border-color: rgb(3, 181, 148);
+    color: white;
+}
+.size-custom {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+.size-custom input {
+    width: 5em;
+    font-size: 16px;
+    padding: 0.2em;
+}
+.size-note {
+    color: gray;
+    font-size: 14px;
+}
+.size-error {
+    color: #c0392b;
+    min-height: 1em;
+}
+.overlay-inner .start button.secondary {
+    background: white;
+    color: gray;
+    border: solid gray 2px;
+}
+#canvas-holder {
+    overflow-x: auto; /* a zoomed board scrolls sideways inside here */
+}
+body.zoomed #canvas-holder {
+    margin-bottom: 140px; /* so the bottom of the board can scroll above the toolbar */
+}
+body.zoomed canvas {
+    margin: 20px;
+}
+body {
+    overflow-anchor: none; /* zoom keeps its own scroll position */
+}
+/* Keep the tabs and the size/zoom buttons in reach while a zoomed board scrolls. */
+.board-tabs {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: rgba(255, 255, 255, 0.92);
+    padding-bottom: 8px;
+}

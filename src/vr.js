@@ -11,18 +11,18 @@ require('./components/room-number.component');
 require('./components/vr-button.component');
 import { createSaveControls } from './save-controls';
 import { createRecoveryUI } from './recovery-ui';
-import { normalizeRoom } from './board-client';
+import { normalizeRoom, BOARD_SIZES, describeSize, presetFor } from './board-client';
 import {
     socket, room, initialBoard, tools, onToolChange, selectedBoard, selectBoard, onSelect
 } from './vr/session';
-import { boardPose, describePose, BOARD_WIDTH } from './vr/layout';
+import { layoutBoards, describePose, boardMetres } from './vr/layout';
 import { createMultiClick } from './triple-click';
 
 const FRAME_COLOR = '#acacac';
 const SELECTED_FRAME_COLOR = '#FFA500';
 
 // ---- Whiteboards in the scene: one entity per board in the room ----
-const boardEls = {};   // id -> { root, plane, frame, label }
+const boardEls = {};   // id -> { root, plane, frame, label, labelEl, width, height, pose }
 let roomBoards = [];   // roomInfo.boards, oldest first
 
 function painter(id) {
@@ -45,43 +45,60 @@ function shortName(name) {
     return name.length > 28 ? name.slice(0, 27) + '\u2026' : name;
 }
 
-function placeBoard(id) {
-    const entry = boardEls[id];
-    const index = roomBoards.findIndex((b) => b.id === id);
-    const info = roomBoards[index];
-    const pose = boardPose(index < 0 ? Object.keys(boardEls).indexOf(id) : index, info && info.pose);
-    entry.root.setAttribute('position', pose.position.join(' '));
-    entry.root.setAttribute('rotation', '0 ' + pose.rotationY + ' 0');
-    entry.pose = pose;
+// Put every board in its place. The layout depends on all the boards' sizes,
+// so it is worked out for the whole room at once.
+function placeBoards() {
+    const ids = roomBoards.map((b) => b.id).filter((id) => boardEls[id]);
+    // Boards whose roomInfo hasn't arrived yet go after the known ones.
+    Object.keys(boardEls).forEach((id) => { if (ids.indexOf(id) === -1) ids.push(id); });
+    const list = ids.map((id) => {
+        const info = roomBoards.find((b) => b.id === id);
+        return { width: boardEls[id].width, height: boardEls[id].height, pose: info && info.pose };
+    });
+    const poses = layoutBoards(list);
+    ids.forEach((id, i) => {
+        const entry = boardEls[id];
+        const pose = poses[i];
+        entry.root.setAttribute('position', pose.position.join(' '));
+        entry.root.setAttribute('rotation', '0 ' + pose.rotationY + ' 0');
+        entry.pose = pose;
+    });
+}
+
+// Set the plane, frame and name tag to the board's size in metres.
+function sizeBoardEl(entry, width, height) {
+    const m = boardMetres(width, height);
+    entry.width = width;
+    entry.height = height;
+    entry.plane.setAttribute('width', m.w);
+    entry.plane.setAttribute('height', m.h);
+    entry.frame.setAttribute('width', m.w + 0.06);
+    entry.frame.setAttribute('height', m.h + 0.05);
+    entry.labelEl.setAttribute('position', '0 ' + ((m.h + 0.05) / 2 + 0.045) + ' 0');
 }
 
 function createBoardEl(id, width, height) {
     const container = document.getElementById('boards');
-    const w = BOARD_WIDTH;
-    const h = BOARD_WIDTH * (height || 1000) / (width || 1500);
+    width = width || 1500;
+    height = height || 1000;
 
     const root = document.createElement('a-entity');
     root.setAttribute('data-board', id);
 
     const plane = document.createElement('a-plane');
     plane.setAttribute('class', 'hittable');
-    plane.setAttribute('width', w);
-    plane.setAttribute('height', h);
     plane.setAttribute('geometry', 'buffer: false');
-    plane.setAttribute('texture-painter', { board: id, width: width || 1500, height: height || 1000 });
+    plane.setAttribute('texture-painter', { board: id, width: width, height: height });
     plane.setAttribute('intersection-visual', { color: tools.clearing ? (tools.eraserColor || 'pink') : tools.color, size: tools.size });
 
     const frame = document.createElement('a-box');
     frame.setAttribute('material', 'color: ' + FRAME_COLOR + '; roughness: 0.6; metalness: 0.8');
-    frame.setAttribute('width', w * 1.04);
-    frame.setAttribute('height', h * 1.05);
     frame.setAttribute('depth', 0.0105);
     frame.setAttribute('position', '0 0 -0.01');
 
     // Name tag above the board (kept small so it fits between the room
     // number and the size buttons on the first board).
     const label = document.createElement('a-entity');
-    label.setAttribute('position', '0 ' + (h * 1.05 / 2 + 0.045) + ' 0');
     const labelBack = document.createElement('a-plane');
     labelBack.setAttribute('width', 0.5);
     labelBack.setAttribute('height', 0.055);
@@ -101,9 +118,21 @@ function createBoardEl(id, width, height) {
     root.appendChild(label);
     container.appendChild(root);
 
-    boardEls[id] = { root: root, plane: plane, frame: frame, label: labelText, labelBack: labelBack };
-    placeBoard(id);
+    boardEls[id] = { root: root, plane: plane, frame: frame, label: labelText, labelBack: labelBack, labelEl: label };
+    sizeBoardEl(boardEls[id], width, height);
+    placeBoards();
     return boardEls[id];
+}
+
+// A board was resized: resize its entity and canvas, then re-place every
+// board (a bigger board can push its neighbours along the ring).
+function resizeBoardEl(id, width, height) {
+    const entry = boardEls[id];
+    if (!entry || (entry.width === width && entry.height === height)) return false;
+    sizeBoardEl(entry, width, height);
+    withPainter(id, (p) => p.resize(width, height));
+    placeBoards();
+    return true;
 }
 
 function paintBoardEl(id) {
@@ -169,7 +198,8 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 
     function refreshBoards() {
-        Object.keys(boardEls).forEach((id) => { placeBoard(id); paintBoardEl(id); });
+        placeBoards();
+        Object.keys(boardEls).forEach((id) => paintBoardEl(id));
         // Desktop (non-headset) picker
         boardSelect.innerHTML = '';
         roomBoards.forEach((b) => {
@@ -234,6 +264,7 @@ window.addEventListener('DOMContentLoaded', () => {
         removeGuard.reset();
         controls.setBoard(id);
         refreshBoards();
+        updateSizeLabel();
     });
 
     boardSelect.addEventListener('change', () => selectBoard(boardSelect.value));
@@ -241,7 +272,9 @@ window.addEventListener('DOMContentLoaded', () => {
     socket.on('boardState', (state) => {
         if (normalizeRoom(state.room) !== room) return;
         if (!boardEls[state.board]) createBoardEl(state.board, state.width, state.height);
+        else resizeBoardEl(state.board, state.width || 1500, state.height || 1000);
         withPainter(state.board, (p) => p.loadState(state));
+        if (state.board === selectedBoard()) updateSizeLabel();
     });
 
     socket.on('roomInfo', (info) => {
@@ -269,6 +302,60 @@ window.addEventListener('DOMContentLoaded', () => {
             } else {
                 controls.setStatus((result && result.error) || 'Could not add a whiteboard.', true);
             }
+        });
+    }
+
+    // ---- Board size: the VR button steps through the ready-made sizes ----
+    const sizeLabel = document.getElementById('vr-size-label');
+    const sizeSelect = document.getElementById('vr-board-size');
+
+    function updateSizeLabel() {
+        const entry = boardEls[selectedBoard()];
+        if (!entry) return;
+        const preset = presetFor(entry.width, entry.height);
+        const text = describeSize(entry.width, entry.height);
+        // The headset font has no × sign, so use a plain x there.
+        if (sizeLabel) sizeLabel.setAttribute('value', 'Size: ' + text.replace('\u00d7', 'x'));
+        if (sizeSelect) sizeSelect.value = preset ? preset.id : 'custom';
+        const custom = sizeSelect && sizeSelect.querySelector('option[value="custom"]');
+        if (custom) custom.textContent = 'Custom (' + text + ')';
+    }
+
+    function resizeSelected(size) {
+        const id = selectedBoard();
+        if (!id) return;
+        socket.emit('resizeBoard', { room: room, board: id, width: size.width, height: size.height }, (result) => {
+            if (result && result.ok) {
+                if (!result.unchanged) controls.setStatus('Board is now ' + describeSize(result.width, result.height));
+            } else {
+                controls.setStatus((result && result.error) || 'Could not change the size.', true);
+            }
+            updateSizeLabel();
+        });
+    }
+
+    function nextSize() {
+        const entry = boardEls[selectedBoard()];
+        if (!entry) return;
+        const index = BOARD_SIZES.findIndex((p) => p.width === entry.width && p.height === entry.height);
+        resizeSelected(BOARD_SIZES[(index + 1) % BOARD_SIZES.length]);
+    }
+
+    if (sizeSelect) {
+        BOARD_SIZES.forEach((p) => {
+            const opt = document.createElement('option');
+            opt.value = p.id;
+            opt.textContent = p.label + ' (' + describeSize(p.width, p.height) + ')';
+            sizeSelect.appendChild(opt);
+        });
+        const custom = document.createElement('option');
+        custom.value = 'custom';
+        custom.disabled = true;
+        custom.textContent = 'Custom';
+        sizeSelect.appendChild(custom);
+        sizeSelect.addEventListener('change', () => {
+            const preset = BOARD_SIZES.find((p) => p.id === sizeSelect.value);
+            if (preset) resizeSelected(preset);
         });
     }
 
@@ -385,6 +472,8 @@ window.addEventListener('DOMContentLoaded', () => {
             if (selectedBoard()) removeGuard.press(selectedBoard());
         } else if (action === 'next-board') {
             nextBoard();
+        } else if (action === 'board-size') {
+            nextSize();
         } else if (action === 'erase-all') {
             if (painter()) painter().eraseAll();
         }
