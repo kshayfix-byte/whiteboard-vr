@@ -122,15 +122,16 @@ Run `npm test`. It needs Node 18 or newer (tested on Node 22) and takes about a 
 
 | ID | Platform | Test | Steps | Expected | Result | Notes |
 |---|---|---|---|---|---|---|
-| A-01 | D | Welcome screen | Open `http://localhost:3000` | Welcome box shows. The address changes to `index.html?room=XXXXX` (5 random letters/digits) | | |
-| A-02 | D | Close welcome | Click **Start drawing!**. Reload, then click outside the box | Both ways close the box and show the board | | |
-| A-03 | D | Room code shown | Look at the toolbar | "Room: XXXXX" matches the address | | |
-| A-04 | D | Join other room | Click **Join other room**, type `abcde`, OK | Page opens room `ABCDE` (upper case) | | |
-| A-05 | D | Join cancelled | Click **Join other room**, press Cancel (and try empty) | Nothing changes | | |
-| A-06 | D | VR link | Click **VR** | VR page opens for the same room (and same board, if not the first) | | |
-| A-07 | V | VR page with no room | Open `/vr.html` with no `?room=` | Address gets a random room code. The scene loads | | |
-| A-08 | V | Room label in VR | Open `/vr.html?room=ABCDE` | The scene's room label shows ABCDE | | |
-| A-09 | D | Lower-case room in address | Open `index.html?room=abcde` | Same room as `ABCDE` (shows the same drawings) | | |
+| A-01 | D | Welcome screen | Open `http://localhost:3000` | Welcome box shows. The address changes to `index.html?room=XXXXX` (5 random letters/digits) | Pass | |
+| A-02 | D | Close welcome | Click **Start drawing!**. Reload, then click outside the box | Both ways close the box and show the board | Pass | |
+| A-03 | D | Room code shown | Look at the toolbar | "Room: XXXXX" matches the address | Pass | |
+| A-04 | D | Join other room | Click **Join other room**, type `abcde`, OK | Page opens room `ABCDE` (upper case) | Pass | |
+| A-05 | D | Join cancelled | Click **Join other room**, press Cancel (and try empty) | Nothing changes | Pass | |
+| A-06 | D | VR link | Click **VR** | VR page opens for the same room (and same board, if not the first) | Fail | Bug 1: no way back to 2D from the VR page |
+| A-06b | V | Back to 2D | On the VR page, select the 2nd board and click **← 2D view** (top left). Then press the VR button (goes full screen), press Esc, and click **← 2D view** again | 2D page opens for the same room on the selected board. Esc leaves full screen first | | Fix for bug 1 |
+| A-07 | V | VR page with no room | Open `/vr.html` with no `?room=` | Address gets a random room code. The scene loads | Pass | |
+| A-08 | V | Room label in VR | Open `/vr.html?room=ABCDE` | The scene's room label shows ABCDE | Pass | |
+| A-09 | D | Lower-case room in address | Open `index.html?room=abcde` | Same room as `ABCDE` (shows the same drawings) | Pass | |
 
 ### B. Drawing in 2D (original)
 
@@ -436,6 +437,6 @@ Copy a row for each problem. Put the bug number in the test's Notes column.
 
 | Bug # | Test ID | Platform / device / browser | What happened | What should happen | Steps to repeat | Severity (blocker / major / minor) | Status |
 |---|---|---|---|---|---|---|---|
-| 1 | | | | | | | |
+| 1 | A-06 | V, desktop browser | Once the VR page is open there is no way back to the 2D page. Pressing the VR button again only goes full screen | A button that returns to the 2D view | Click VR on the 2D page, then look for a way back | Major | Fixed: **← 2D view** button in the VR page toolbar (opens the 2D page on the same room and selected board). Retest with A-06b |
 | 2 | | | | | | | |
 | 3 | | | | | | | |

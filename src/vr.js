@@ -289,7 +289,29 @@ window.addEventListener('DOMContentLoaded', () => {
         removeBoardButton.disabled = roomBoards.length <= 1;
         const info = roomBoards.find((b) => b.id === selectedBoard());
         document.title = (info ? info.name + ' - ' : '') + 'Whiteboard VR';
+        update2dLink();
         scene.emit('board-renamed', { name: describeSelected() });
+    }
+
+    // ---- "2D view": back to the flat page for this room and board ----
+    const twoDLink = document.getElementById('vr-2d-view');
+    function update2dLink() {
+        if (!twoDLink) return;
+        const id = selectedBoard();
+        twoDLink.href = 'index.html?room=' + encodeURIComponent(room) +
+            (id && id !== 'main' ? '&board=' + encodeURIComponent(id) : '');
+    }
+    if (twoDLink) {
+        update2dLink();
+        onSelect(update2dLink);
+        twoDLink.addEventListener('click', (evt) => {
+            // Leave full screen / immersive mode first so the browser shows the page.
+            if (scene.is && scene.is('vr-mode')) {
+                evt.preventDefault();
+                const go = () => { window.location.href = twoDLink.href; };
+                Promise.resolve(scene.exitVR()).then(go, go);
+            }
+        });
     }
 
     // ---- Remove whiteboard: three presses in a row ----
