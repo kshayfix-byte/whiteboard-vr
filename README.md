@@ -22,15 +22,15 @@ Try it yourself: [https://whiteboard-vr.herokuapp.com](https://whiteboard-vr.her
 
 ## Saving, naming and export
 
-- Each new whiteboard gets a temporary name like `Whiteboard_4821`. While you draw, the current board is shared live with everyone in the room (including people who join later), but it is only written to disk when you press **Save**.
-- The first **Save** on a board asks for a name. Later saves keep that name. **Rename** changes it at any time.
+- Each new whiteboard gets a temporary name like `Whiteboard_4821`. The current board is shared live with everyone in the room, including people who join later.
+- The first **Save** on a board asks for a name. After that, changes are **autosaved** to the saved file a few seconds after you make them, and Save saves right away. **Rename** changes the name at any time.
 - **Save all** saves every whiteboard in the room. It stays greyed out until each whiteboard has been named with its own Save button.
 - **Saved boards** lists every saved board so you can reopen it in 2D or VR.
-- **Export image** downloads the board as a PNG, in 2D (toolbar) and in VR (the green boxes left of the board, or the buttons in the top corner outside VR). There's also a **Rename** box in VR.
-- Browsers can't show a text box inside a headset. So when a board needs a name (first Save or Rename in VR), the page leaves VR, shows the normal name box, and you press **VR** to go back in.
+- **Export image** downloads the board as a PNG, in 2D (toolbar) and in VR (the green boxes left of the board, or the buttons in the top corner outside VR).
+- **Naming in a headset:** browsers can't show a text box inside VR. So Save on an unnamed board, or Rename, opens a small 2D window (`name.html`) with a name field and a Save button. If the browser won't open a window, the page leaves VR and shows the normal name box instead, and you press **VR** to go back in.
+- **Backup and restore:** whiteboards that have never been saved are backed up every few seconds to `./data/drafts/`. If the server stops before they're saved (a crash or a restart), the next time you open the app it lists them by name and last change. You can restore them one by one, restore all, or discard them. Restored whiteboards still need a name and a Save. **Restore unsaved** in the toolbar brings the list back later.
 - Saved boards are JSON files in `./data` (change it with the `DATA_DIR` environment variable). Back up that folder to keep your boards.
-- **Backup copy:** unsaved changes are also written every few seconds to `./data/drafts/`. If the server crashes or restarts, they come back on the board, marked "Unsaved changes recovered from backup", and you can Save them. The saved version only changes when you press Save. The backup is removed once everything is saved.
-- `GET /api/boards` lists saved boards; `GET /api/boards/<room>` shows the whiteboards in a room and whether each one is named and saved.
+- API: `GET /api/boards` lists saved boards. `GET /api/boards/<room>` shows the whiteboards in a room. `GET /api/recovery`, `POST /api/recovery/restore` and `POST /api/recovery/discard` (body `{"ids": [...]}`) handle backups.
 
 ## Technologies
 

@@ -3,6 +3,14 @@
 // to disk. A new board starts with a temporary name (e.g. Whiteboard_4821),
 // and its first Save asks for a real name.
 
+function shortTime(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    const sameDay = d.toDateString() === new Date().toDateString();
+    return sameDay ? 'at ' + d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+        : d.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+}
+
 export function createSaveControls(options) {
     const socket = options.socket;
     const room = options.room;
@@ -36,10 +44,9 @@ export function createSaveControls(options) {
         if (els.state) {
             let text = '';
             if (board) {
-                if (board.recovered) text = 'Unsaved changes recovered from backup';
-                else if (!board.savedAt) text = 'Not saved yet';
-                else if (board.dirty) text = 'Unsaved changes';
-                else text = 'Saved';
+                if (!board.named) text = board.restored ? 'Restored from backup, not saved yet' : 'Not saved yet';
+                else if (board.dirty) text = 'Autosaving\u2026';
+                else text = 'Saved ' + shortTime(board.savedAt);
             }
             els.state.textContent = text;
         }

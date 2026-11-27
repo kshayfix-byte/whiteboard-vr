@@ -4,6 +4,7 @@ import {
     exportFilename, downloadCanvas, formatDate
 } from './board-client';
 import { createSaveControls } from './save-controls';
+import { createRecoveryUI } from './recovery-ui';
 
 function getParameterByName(name, url) {
     if (!url) url = window.location.href;
@@ -305,6 +306,16 @@ joinRoom.addEventListener('click', () => {
         window.location.href = "index.html?room="+enteredRoom;
       }
 })
+
+// Offer to restore unsaved whiteboards left over from a crash or restart.
+const recovery = createRecoveryUI({ room: room, page: 'index.html' });
+const recoverButton = document.getElementById('recover-boards');
+recovery.onCount((n) => {
+    recoverButton.classList.toggle('hidden', !n);
+    recoverButton.textContent = 'Restore unsaved (' + n + ')';
+});
+recoverButton.addEventListener('click', () => recovery.open());
+recovery.check(true);
 
 const overlay = document.querySelector(".overlay");
 const startButton = document.querySelector("#start-button");
