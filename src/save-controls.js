@@ -14,7 +14,7 @@ function shortTime(iso) {
 export function createSaveControls(options) {
     const socket = options.socket;
     const room = options.room;
-    const boardId = options.boardId || 'main';
+    let boardId = options.boardId || 'main'; // the board the buttons act on
     const els = options.elements || {};
     const onChange = options.onChange || function () {};
 
@@ -122,7 +122,17 @@ export function createSaveControls(options) {
     if (els.saveAll) els.saveAll.addEventListener('click', saveAll);
     render();
 
+    // Point the buttons at another board (2D tab switch, VR board selection).
+    function setBoard(id) {
+        if (!id || id === boardId) return;
+        boardId = id;
+        render();
+    }
+
     return {
+        setBoard: setBoard,
+        boardId: () => boardId,
+        info: () => info,
         saveCurrent: saveCurrent,
         saveAll: saveAll,
         renameCurrent: renameCurrent,

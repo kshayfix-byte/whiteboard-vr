@@ -1,3 +1,5 @@
+import { setTool } from '../vr/session';
+
 
 AFRAME.registerComponent('eraser-picker', {
     schema: {
@@ -12,8 +14,6 @@ AFRAME.registerComponent('eraser-picker', {
     },
     init: function () {
 
-        this.intersectionVisual = document.querySelector("[intersection-visual]");
-        this.texturePainter = document.querySelector("[texture-painter]");
 
         this.el.sceneEl.addEventListener('camera-set-active', this.cameraSetActive.bind(this));
 
@@ -38,17 +38,7 @@ AFRAME.registerComponent('eraser-picker', {
         });
     },
     activateEraser: function() {
-        this.data.clearing = 'true';
-            if (this.intersectionVisual) {
-                this.intersectionVisual.setAttribute('intersection-visual', {
-                    color: this.data.color
-                });
-            }
-            if (this.texturePainter) {
-                this.texturePainter.setAttribute('texture-painter', {
-                    clearing: this.data.clearing
-                });
-            }
+        setTool({ clearing: true, eraserColor: this.data.color });
     },
     onMouseUp: function(evt) {
         var array = this.getMousePosition( this.renderer.domElement, evt.clientX || evt.touches[0].clientX, evt.clientY || evt.touches[0].clientY );

@@ -1,3 +1,5 @@
+import { tools, setTool } from '../vr/session';
+
 
 AFRAME.registerComponent('size-bigger', {
     schema: {
@@ -8,8 +10,6 @@ AFRAME.registerComponent('size-bigger', {
     },
     init: function () {
 
-        this.texturePainter = document.querySelector("[texture-painter]");
-        this.intersectionVisual = document.querySelector("[intersection-visual]");
         this.increasing = false;
 
         var controllers = document.querySelectorAll(".controller");
@@ -17,23 +17,14 @@ AFRAME.registerComponent('size-bigger', {
             controller.addEventListener('triggerdown', evt => {
                 if (!(this.increasing) && (this.raycasterObj)) {
                     this.increasing = true;
-                    if (this.texturePainter) {
-                        newSize = this.texturePainter.getAttribute('texture-painter').size + 10;
-                        if (newSize > 50) {
-                            newSize = 50;
-                        }
-                        this.texturePainter.setAttribute('texture-painter', {
-                            size: newSize
-                        });
-                        if (this.intersectionVisual) {
-                            this.intersectionVisual.setAttribute('intersection-visual', {
-                                size: newSize
-                            });
-                            this.el.setAttribute('material', {
-                                color: 'red'
-                            })
-                        }
+                    let newSize = tools.size + 10;
+                    if (newSize > 50) {
+                        newSize = 50;
                     }
+                    setTool({ size: newSize });
+                    this.el.setAttribute('material', {
+                        color: 'red'
+                    })
                 }
             });
             controller.addEventListener('triggerup', evt => {

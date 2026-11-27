@@ -28,7 +28,7 @@ if (!room) {
 } else {
     const socket = io();
     let filled = false;
-    socket.on('connect', () => socket.emit('join', { room: room, board: board }));
+    socket.on('connect', () => socket.emit('join', { room: room, board: board, infoOnly: true }));
     socket.on('roomInfo', (info) => {
         if (info.room !== room) return;
         const b = info.boards.find((x) => x.id === board);
