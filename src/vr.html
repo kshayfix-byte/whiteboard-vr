@@ -121,6 +121,14 @@
         <a-text value="Next board" color="#03B594" position="0.75 0.63 -0.6" width="1.2"></a-text>
         <a-box id="vr-next-board-box" class="hittable" vr-button="action: next-board; enabled: false" position="0.9 0.55 -0.6" scale="0.08 0.08 0.03"></a-box>
 
+        <!-- Moving around and pointer reach: a row under the tray. -->
+        <a-text id="vr-moving-label" value="Moving: Teleport" color="#03B594" anchor="left" position="-0.69 0.2 -0.55" width="1.2"></a-text>
+        <a-box class="hittable" vr-button="action: moving-mode; cooldown: 600" position="-0.75 0.2 -0.55" scale="0.08 0.08 0.03"></a-box>
+        <a-text id="vr-reach-label" value="Reach: Long" color="#03B594" anchor="left" position="-0.09 0.2 -0.55" width="1.2"></a-text>
+        <a-box class="hittable" vr-button="action: reach; cooldown: 600" position="-0.15 0.2 -0.55" scale="0.08 0.08 0.03"></a-box>
+        <a-text value="Back to start" color="#03B594" anchor="left" position="0.51 0.2 -0.55" width="1.2"></a-text>
+        <a-box class="hittable" vr-button="action: back-to-start" position="0.45 0.2 -0.55" scale="0.08 0.08 0.03"></a-box>
+
         <a-light type="directional" position="0 1.5 3" rotation="-45 0 0" intensity="0.4"></a-light>
       </a-entity>
 
@@ -130,10 +138,14 @@
            behind aren't left in the dark (the original light only faces the front board). -->
       <a-light type="point" position="0 2.2 0.1" intensity="0.35" distance="8" decay="1"></a-light>
 
-      <a-entity camera wasd-controls look-controls="enabled: true" position="0 1.3 0.1"></a-entity>
+      <!-- The rig carries you around the room (teleport / smooth moving, see src/vr/locomotion.js).
+           The pointer length (far) is set from the Reach setting in src/vr/reach.js. -->
+      <a-entity id="rig">
+        <a-entity id="camera" camera wasd-controls look-controls="enabled: true" position="0 1.3 0.1"></a-entity>
 
-      <a-entity class="controller" laser-controls="hand: left" raycaster="objects: .hittable; far: 0.2" line="color: #000000"></a-entity>
-      <a-entity class="controller" laser-controls="hand: right" raycaster="objects: .hittable; far: 0.2" line="color: #000000"></a-entity>
+        <a-entity class="controller" laser-controls="hand: left" raycaster="objects: .hittable; far: 12" line="color: #000000"></a-entity>
+        <a-entity class="controller" laser-controls="hand: right" raycaster="objects: .hittable; far: 12" line="color: #000000"></a-entity>
+      </a-entity>
     </a-scene>
   </body>
 </html>

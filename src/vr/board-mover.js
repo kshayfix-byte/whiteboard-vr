@@ -204,6 +204,7 @@ export function createBoardMover(options) {
         nudge: nudge,
         autoPlace: autoPlace,
         isHeld: (id) => !!held && held.id === id,
+        holds: (controller) => !!held && held.controller === controller,
         heldId: () => (held ? held.id : null)
     };
 }

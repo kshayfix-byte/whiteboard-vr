@@ -1,4 +1,5 @@
 import { setTool } from '../vr/session';
+import { watchTouch } from '../vr/reach';
 
 
 AFRAME.registerComponent('eraser-picker', {
@@ -28,14 +29,17 @@ AFRAME.registerComponent('eraser-picker', {
         this.el.setAttribute('material', {
             color: this.data.color
         })
-        this.el.addEventListener('raycaster-intersected', evt => {
-            this.raycasterObj = evt.detail.el;   
-            this.raycasterObj.setAttribute('line', {
+        // Touch it with the pointer (within 20 cm), or point and pull the
+        // trigger from further away (see vr/reach.js).
+        this.touch = watchTouch(this.el, (controller) => {
+            controller.setAttribute('line', {
                 color: this.data.color
             });
             this.activateEraser()
-            
         });
+    },
+    tick: function () {
+        this.touch.tick();
     },
     activateEraser: function() {
         setTool({ clearing: true, eraserColor: this.data.color });

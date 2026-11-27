@@ -1,4 +1,5 @@
 import { tools, setTool } from '../vr/session';
+import { nearestHit } from '../vr/reach';
 
 
 AFRAME.registerComponent('size-bigger', {
@@ -15,7 +16,7 @@ AFRAME.registerComponent('size-bigger', {
         var controllers = document.querySelectorAll(".controller");
         controllers.forEach((controller) => {
             controller.addEventListener('triggerdown', evt => {
-                if (!(this.increasing) && (this.raycasterObj)) {
+                if (!(this.increasing) && nearestHit(controller, this.el)) {
                     this.increasing = true;
                     let newSize = tools.size + 10;
                     if (newSize > 50) {

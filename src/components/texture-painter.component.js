@@ -6,6 +6,13 @@ import {
     exportFilename, downloadCanvas, sizeCanvas
 } from '../board-client';
 import { socket, room, tools, selectBoard } from '../vr/session';
+import { nearestHit } from '../vr/reach';
+
+// Drawing from far away: hand shake grows with distance, so strokes drawn
+// from more than STEADY_FROM metres are smoothed a little (more the further
+// away). Close up, strokes follow the pointer exactly, as before.
+const STEADY_FROM = 0.5;
+const MIN_FOLLOW = 0.3;  // fraction of the way to the pointer per frame, at most smoothing
 
 AFRAME.registerComponent('texture-painter', {
     schema: {
@@ -35,6 +42,7 @@ AFRAME.registerComponent('texture-painter', {
             this.hoverSelected = false; // tick() selects once the hit is confirmed
         });
         this.el.addEventListener('raycaster-intersected-cleared', evt => {
+            if (this.raycasterObj && evt.detail.el !== this.raycasterObj) return; // the other controller
             this.lastX = null;
             this.lastY = null;
             this.raycasterObj = null;
@@ -152,8 +160,14 @@ AFRAME.registerComponent('texture-painter', {
     tick: function () {
         if (!this.raycasterObj) { return; }  // Not intersecting.
     
-        let intersection = this.raycasterObj.components.raycaster.getIntersection(this.el);
-        if (!intersection) { return; }
+        // Only the first thing the pointer hits counts, so a long pointer
+        // can't draw on a board hidden behind this one (or behind a button).
+        let intersection = nearestHit(this.raycasterObj, this.el);
+        if (!intersection) {
+            this.lastX = null;
+            this.lastY = null;
+            return;
+        }
         // Pointing a controller at a board selects it. (Checked here rather
         // than on raycaster-intersected, which also fires for a moment while
         // new boards are still at the origin.)
@@ -164,11 +178,16 @@ AFRAME.registerComponent('texture-painter', {
         if (this.triggerdown) {
             selectBoard(this.boardId);
             var uv = intersection.uv;
-            var x = uv.x;
-            var y = 1 - uv.y;
-            this._draw( x * this._canvas.width, y * this._canvas.height);
-            this.lastX = x * this._canvas.width;
-            this.lastY = y * this._canvas.height;
+            var x = uv.x * this._canvas.width;
+            var y = (1 - uv.y) * this._canvas.height;
+            if (this.lastX != null && intersection.distance > STEADY_FROM) {
+                var follow = Math.max(MIN_FOLLOW, STEADY_FROM / intersection.distance);
+                x = this.lastX + (x - this.lastX) * follow;
+                y = this.lastY + (y - this.lastY) * follow;
+            }
+            this._draw(x, y);
+            this.lastX = x;
+            this.lastY = y;
         } else {
             this.lastX = null;
             this.lastY = null;
