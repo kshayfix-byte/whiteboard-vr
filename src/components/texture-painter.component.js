@@ -3,7 +3,7 @@
 // are shared by all boards (see ../vr/session.js).
 import {
     DEFAULT_BACKGROUND, normalizeRoom, clearCanvas, drawSegment, replayBoard,
-    exportFilename, downloadCanvas
+    exportFilename, downloadCanvas, sizeCanvas
 } from '../board-client';
 import { socket, room, tools, selectBoard } from '../vr/session';
 
@@ -51,7 +51,14 @@ AFRAME.registerComponent('texture-painter', {
         })
         
 
-        var planeTexture = new THREE.Texture( undefined, THREE.UVMapping, THREE.MirroredRepeatWrapping, THREE.MirroredRepeatWrapping );
+        // Clamp + linear filtering without mipmaps lets the texture keep the
+        // canvas's real size. (With the original repeat wrapping, three.js
+        // shrank every board to a power of two, e.g. 1500x1000 to 1024x1024,
+        // which would make large boards blurry.) Boards bigger than the GPU's
+        // largest texture are still scaled down by three.js.
+        var planeTexture = new THREE.Texture( undefined, THREE.UVMapping, THREE.ClampToEdgeWrapping, THREE.ClampToEdgeWrapping,
+            THREE.LinearFilter, THREE.LinearFilter );
+        planeTexture.generateMipmaps = false;
         this.planeMaterial = new THREE.MeshPhongMaterial( { map: planeTexture, shininess: 50 } );
         // The mesh may not exist yet when the board is created from code.
         const useMaterial = () => {
@@ -101,7 +108,18 @@ AFRAME.registerComponent('texture-painter', {
     mine: function (obj) {
         return obj && room == normalizeRoom(obj.room) && (obj.board || 'main') === this.boardId;
     },
+    // The board was resized: give the canvas the new size (this wipes it;
+    // loadState() redraws it right after) and re-upload the texture.
+    resize: function (width, height) {
+        if (!sizeCanvas(this._canvas, width, height)) return;
+        this.lastX = null;
+        this.lastY = null;
+        clearCanvas(this._context2D, this._canvas, this.background);
+        this.parentTexture.dispose(); // the GPU copy has the old size
+        this.parentTexture.needsUpdate = true;
+    },
     loadState: function (state) {
+        if (state.width && state.height) this.resize(state.width, state.height);
         this.background = state.background || DEFAULT_BACKGROUND;
         replayBoard(this._context2D, this._canvas, state);
         this.parentTexture.needsUpdate = true;
@@ -195,6 +213,8 @@ AFRAME.registerComponent('texture-painter', {
             drawObject.board = this.boardId;
             drawObject.size = Number(tools.size);
             drawObject.clearing = tools.clearing;
+            drawObject.bw = this._canvas.width;   // board size this stroke was drawn on
+            drawObject.bh = this._canvas.height;
             socket.emit('draw', drawObject);
             this.drawRemote(drawObject);
             this.lastX = x;

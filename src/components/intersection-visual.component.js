@@ -32,6 +32,10 @@ AFRAME.registerComponent('intersection-visual', {
         this.mesh = new THREE.Mesh(this.geometry, this.material);
         this.el.sceneEl.object3D.add(this.mesh);
     },
+    remove: function () {
+        // The marker lives on the scene, so take it away with its board.
+        this.el.sceneEl.object3D.remove(this.mesh);
+    },
     tick: function () {
         if (!this.raycasterObj) { return; }  // Not intersecting.
     
