@@ -3,6 +3,7 @@ import {
     DEFAULT_BACKGROUND, normalizeRoom, clearCanvas, drawSegment, replayBoard,
     exportFilename, downloadCanvas, formatDate
 } from './board-client';
+import { createSaveControls } from './save-controls';
 
 function getParameterByName(name, url) {
     if (!url) url = window.location.href;
@@ -31,6 +32,7 @@ let id = Math.floor(Math.random() * 100000000);
 let lastX = null;
 let lastY = null;
 let background = DEFAULT_BACKGROUND;
+let boardId = 'main'; // the "add whiteboard" feature will switch this
 let boardName = '';
 let loaded = false;
 let color = "#000000";
@@ -48,29 +50,34 @@ const context2D = canvas.getContext( "2d" );
 // draw background
 clearCanvas(context2D, canvas, background);
 
-const boardNameEl = document.getElementById('board-name');
-function showBoardName(name) {
-    boardName = name || '';
-    boardNameEl.textContent = boardName || 'Untitled board';
-    document.title = (boardName ? boardName + ' - ' : '') + 'Whiteboard VR';
-}
-showBoardName('');
+createSaveControls({
+    socket: socket,
+    room: room,
+    boardId: boardId,
+    elements: {
+        name: document.getElementById('board-name'),
+        state: document.getElementById('board-state'),
+        status: document.getElementById('save-status'),
+        save: document.getElementById('save-board'),
+        rename: document.getElementById('rename-board'),
+        saveAll: document.getElementById('save-all')
+    },
+    onChange: (board) => {
+        boardName = board ? board.name : '';
+        document.title = (boardName ? boardName + ' - ' : '') + 'Whiteboard VR';
+    }
+});
 
-// Ask the server for the saved board on every (re)connect.
+// Ask the server for the current board on every (re)connect.
 socket.on('connect', () => {
-    socket.emit('join', { room: room });
+    socket.emit('join', { room: room, board: boardId });
 });
 
 socket.on('boardState', (state) => {
     if (normalizeRoom(state.room) !== room) return;
     background = state.background || DEFAULT_BACKGROUND;
     replayBoard(context2D, canvas, state);
-    showBoardName(state.name);
     loaded = true;
-});
-
-socket.on('boardRenamed', (msg) => {
-    if (normalizeRoom(msg.room) === room) showBoardName(msg.name);
 });
 
 socket.on('remoteDraw', (remoteDrawObject) => {
@@ -115,6 +122,7 @@ function draw (x, y) {
         drawObject.y = y;
         drawObject.color = color;
         drawObject.room = room;
+        drawObject.board = boardId;
         drawObject.size = Number(size);
         drawObject.clearing = clearing;
         socket.emit('draw', drawObject);
@@ -218,14 +226,6 @@ exportImage.addEventListener('click', () => {
     downloadCanvas(canvas, exportFilename(boardName, room));
 })
 
-let nameBoard = document.getElementById('name-board');
-nameBoard.addEventListener('click', () => {
-    let entered = window.prompt("Name this board:", boardName);
-    if (entered == null) {
-        return; // canceled
-    }
-    socket.emit('rename', { room: room, name: entered });
-})
 
 const boardsOverlay = document.getElementById('boards-overlay');
 const boardsList = document.getElementById('boards-list');
@@ -234,20 +234,20 @@ function renderBoardList(boards) {
     boardsList.innerHTML = '';
     if (!boards.length) {
         const empty = document.createElement('p');
-        empty.textContent = 'No saved boards yet. Anything you draw is saved automatically.';
+        empty.textContent = 'No saved boards yet. Press Save to keep a whiteboard.';
         boardsList.appendChild(empty);
         return;
     }
     boards.forEach((b) => {
         const row = document.createElement('div');
-        row.className = 'board-row' + (b.room === room ? ' current' : '');
+        row.className = 'board-row' + (b.room === room && b.board === boardId ? ' current' : '');
         const info = document.createElement('div');
         const title = document.createElement('div');
         title.className = 'board-title';
         title.textContent = b.name || 'Untitled board';
         const meta = document.createElement('div');
         meta.className = 'board-meta';
-        meta.textContent = 'Room ' + b.room + ' \u00b7 last changed ' + formatDate(b.updatedAt);
+        meta.textContent = 'Room ' + b.room + ' \u00b7 saved ' + formatDate(b.savedAt);
         info.appendChild(title);
         info.appendChild(meta);
         const links = document.createElement('div');
@@ -290,6 +290,7 @@ eraseAll.addEventListener('click', () => {
     var eraseAllObject= {};
     eraseAllObject.id = id;
     eraseAllObject.room = room;
+    eraseAllObject.board = boardId;
     socket.emit('eraseAll', eraseAllObject);
     eraseAllRemote(eraseAllObject);
 })

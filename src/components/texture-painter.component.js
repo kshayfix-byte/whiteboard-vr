@@ -21,6 +21,8 @@ if (!room) {
 }
 
 const socket = io();
+const boardId = 'main'; // the "add whiteboard" feature will switch this
+export { socket, room, boardId };
 
 AFRAME.registerComponent('texture-painter', {
     schema: {
@@ -106,7 +108,7 @@ AFRAME.registerComponent('texture-painter', {
         this.parentTexture.needsUpdate = true;
 
         // Load the saved board now and again after any reconnect.
-        const join = () => socket.emit('join', { room: room });
+        const join = () => socket.emit('join', { room: room, board: boardId });
         socket.on('connect', join);
         if (socket.connected) join();
 
@@ -119,8 +121,10 @@ AFRAME.registerComponent('texture-painter', {
             this.loaded = true;
         });
 
-        socket.on('boardRenamed', (msg) => {
-            if (normalizeRoom(msg.room) === room) this.setBoardName(msg.name);
+        socket.on('roomInfo', (info) => {
+            if (normalizeRoom(info.room) !== room) return;
+            const board = info.boards.find((b) => b.id === boardId);
+            if (board) this.setBoardName(board.name);
         });
     
         socket.on('remoteDraw', (remoteDrawObject) => {
@@ -146,6 +150,7 @@ AFRAME.registerComponent('texture-painter', {
         }
     },
     setBoardName: function(name) {
+        if ((name || '') === this.boardName) return;
         this.boardName = name || '';
         document.title = (this.boardName ? this.boardName + ' - ' : '') + 'Whiteboard VR';
         this.el.sceneEl.emit('board-renamed', { name: this.boardName });
@@ -206,6 +211,7 @@ AFRAME.registerComponent('texture-painter', {
     eraseAll: function () {
         var eraseAllObject = {};
         eraseAllObject.room = room;
+        eraseAllObject.board = boardId;
         eraseAllObject.id = this.id;
         socket.emit('eraseAll', eraseAllObject);
         this.eraseAllRemote(eraseAllObject);
@@ -221,6 +227,7 @@ AFRAME.registerComponent('texture-painter', {
             drawObject.y = y;
             drawObject.color = this.color;
             drawObject.room = room;
+            drawObject.board = boardId;
             drawObject.size = Number(this.size);
             drawObject.clearing = this.clearing;
             socket.emit('draw', drawObject);

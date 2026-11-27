@@ -47,9 +47,15 @@
       </div>
       <div>
         <div class="room">Room: <span id="room-number">CVC19</span></div>
-        <div class="board-name" id="board-name" title="Boards are saved on the server automatically">Untitled board</div>
-        <button id="name-board">Name board</button>
+        <div class="board-label">
+          <div class="board-name" id="board-name"></div>
+          <div class="board-state" id="board-state"></div>
+        </div>
+        <button id="save-board">Save</button>
+        <button id="rename-board">Rename</button>
+        <button id="save-all">Save all</button>
         <button id="saved-boards">Saved boards</button>
+        <span class="save-status" id="save-status" role="status"></span>
         <button id="export-image">Export image</button>
         <button id="erase-all">Erase whole board</button>
         <button id="join-room">Join other room</button>

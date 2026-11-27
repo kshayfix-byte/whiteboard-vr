@@ -157,7 +157,6 @@ body{
 .board-name {
     font-family: sans-serif;
     font-size: 18px;
-    margin-left: 12px;
     max-width: 260px;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -183,4 +182,32 @@ body{
 .board-meta {
     color: gray;
     font-size: 14px;
+}
+.board-label {
+    display: flex;
+    flex-direction: column;
+    margin-left: 12px;
+    font-family: sans-serif;
+}
+.board-name.temporary {
+    font-style: italic;
+    color: #666;
+}
+.board-state {
+    font-size: 12px;
+    color: gray;
+}
+.save-status {
+    font-family: sans-serif;
+    font-size: 14px;
+    color: rgb(3, 140, 115);
+}
+.save-status.error {
+    color: #c0392b;
+}
+button:disabled, button:disabled:hover {
+    opacity: 0.45;
+    cursor: not-allowed;
+    border: solid gray 2px;
+    color: gray;
 }

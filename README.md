@@ -20,13 +20,15 @@ Try it yourself: [https://whiteboard-vr.herokuapp.com](https://whiteboard-vr.her
 4. Build project `npm run build`
 5. Start Webserver (with socket.io) `npm run start`
 
-## Saved boards and export
+## Saving, naming and export
 
-- Every room's board is saved on the server as you draw, so people who join later (or come back after a restart) see everything that's already there.
-- Boards are stored as JSON files in `./data` (change it with the `DATA_DIR` environment variable). Back up that folder to keep your boards.
-- **Name board** gives the current board a name; **Saved boards** lists every saved board so you can reopen it in 2D or VR.
-- **Export image** downloads the board as a PNG, in 2D (toolbar) and in VR (the green box above the eraser, or the button in the corner outside VR).
-- `GET /api/boards` lists saved boards; `GET /api/boards/<room>` returns one board's data.
+- Each new whiteboard gets a temporary name like `Whiteboard_4821`. While you draw, the current board is shared live with everyone in the room (including people who join later), but it is only written to disk when you press **Save**.
+- The first **Save** on a board asks for a name. Later saves keep that name. **Rename** changes it at any time.
+- **Save all** saves every whiteboard in the room. It stays greyed out until each whiteboard has been named with its own Save button.
+- **Saved boards** lists every saved board so you can reopen it in 2D or VR.
+- **Export image** downloads the board as a PNG, in 2D (toolbar) and in VR (the green boxes left of the board, or the buttons in the top corner outside VR). In a headset, a board that still has a temporary name has to be named once on a screen first, because a headset can't show the name prompt.
+- Saved boards are JSON files in `./data` (change it with the `DATA_DIR` environment variable). Back up that folder to keep your boards. Unsaved changes are lost if the server restarts.
+- `GET /api/boards` lists saved boards; `GET /api/boards/<room>` shows the whiteboards in a room and whether each one is named and saved.
 
 ## Technologies
 
