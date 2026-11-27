@@ -5,7 +5,8 @@ AFRAME.registerComponent('vr-button', {
     schema: {
         action: { type: 'string' },
         color: { type: 'color', default: '#03B594' },
-        enabled: { type: 'boolean', default: true }
+        enabled: { type: 'boolean', default: true },
+        cooldown: { type: 'int', default: 1500 } // ms between presses
     },
     init: function () {
         this.lastPress = 0;
@@ -55,7 +56,7 @@ AFRAME.registerComponent('vr-button', {
     press: function () {
         if (!this.data.enabled) return;
         const now = Date.now();
-        if (now - this.lastPress < 1500) return; // one action per press
+        if (now - this.lastPress < this.data.cooldown) return; // one action per press
         this.lastPress = now;
         this.el.sceneEl.emit('vr-action', { action: this.data.action });
     }

@@ -1,3 +1,5 @@
+import { setTool } from '../vr/session';
+
 
 AFRAME.registerComponent('color-picker', {
     schema: {
@@ -8,8 +10,6 @@ AFRAME.registerComponent('color-picker', {
     },
     init: function () {
 
-        this.intersectionVisual = document.querySelector("[intersection-visual]");
-        this.texturePainter = document.querySelector("[texture-painter]");
         this.el.sceneEl.addEventListener('camera-set-active', this.cameraSetActive.bind(this));
 
         this.raycaster = new THREE.Raycaster();
@@ -33,19 +33,8 @@ AFRAME.registerComponent('color-picker', {
         });
     },
     setColor: function() {
-        if (this.intersectionVisual) {
-            this.intersectionVisual.setAttribute('intersection-visual', {
-                color: this.data.color
-            });
-        }
-        if (this.texturePainter) {
-            this.texturePainter.setAttribute('texture-painter', {
-                color: this.data.color
-            });
-            this.texturePainter.setAttribute('texture-painter', {
-                clearing: 'false'
-            });                    
-        }
+        // Pen settings are shared by every whiteboard (see vr/session.js).
+        setTool({ color: this.data.color, clearing: false });
     },
     onMouseUp: function(evt) {
         var array = this.getMousePosition( this.renderer.domElement, evt.clientX || evt.touches[0].clientX, evt.clientY || evt.touches[0].clientY );
