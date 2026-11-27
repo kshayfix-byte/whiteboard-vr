@@ -155,7 +155,7 @@ function refreshView(b) {
 // Show one board and point Save / Rename / Export / Erase at it.
 function showBoard(bid) {
     if (!boards[bid]) return;
-    if (bid !== boardId) { removeGuard.reset(); zoom = 1; } // only runs after load, once removeGuard exists
+    if (bid !== boardId) { removeGuard.reset(); eraseGuard.reset(); zoom = 1; } // only runs after load, once the guards exist
     boardId = bid;
     lastX = null;
     lastY = null;
@@ -365,41 +365,81 @@ function boardPoint(c, pageX, pageY) {
     return p;
 }
 
+// True while the mouse button that started a stroke on the board is held.
+// Leaving the board ends the line; coming back in with the button still held
+// starts a new line where the pen re-enters (bug 3 / test B-09), so nothing
+// is drawn across the part of the path that was off the board.
+let penDown = false;
+
+function insideCanvas(c, clientX, clientY) {
+    const r = c.getBoundingClientRect();
+    return clientX >= r.left && clientX <= r.right && clientY >= r.top && clientY <= r.bottom;
+}
+
+function penUp() {
+    penDown = false;
+    lastX = null;
+    lastY = null;
+}
+
+// Releasing the button anywhere (also outside the board) ends the stroke.
+window.addEventListener('mouseup', penUp);
+window.addEventListener('blur', penUp);
+
 function attachDrawing(c) {
     c.addEventListener('mousemove', (evt) => {
         evt.preventDefault();
         const p = boardPoint(c, evt.pageX, evt.pageY);
+        if (penDown && lastX == null && (evt.buttons & 1)) {
+            lastX = p[0];   // came back onto the board: start a new line here
+            lastY = p[1];
+            return;
+        }
         draw(p[0], p[1]);
     });
     c.addEventListener('mousedown', (evt) => {
+        // Stop the browser selecting text or dragging an earlier selection,
+        // which would swallow the mouse moves of this stroke.
+        evt.preventDefault();
+        if (window.getSelection) window.getSelection().removeAllRanges();
+        penDown = true;
         const p = boardPoint(c, evt.pageX, evt.pageY);
         lastX = p[0];
         lastY = p[1];
     });
-    c.addEventListener('mouseup', () => {
-        lastX = null;
+    c.addEventListener('mouseleave', () => {
+        lastX = null;   // stop the line at the edge, keep penDown
         lastY = null;
     });
     c.addEventListener('touchstart', (evt) => {
         evt.preventDefault();
+        penDown = true;
         const p = boardPoint(c, evt.targetTouches[0].pageX, evt.targetTouches[0].pageY);
         lastX = p[0];
         lastY = p[1];
     }, false);
     c.addEventListener('touchmove', (evt) => {
         evt.preventDefault();
-        const p = boardPoint(c, evt.targetTouches[0].pageX, evt.targetTouches[0].pageY);
+        const t = evt.targetTouches[0];
+        // A finger keeps sending moves after it slides off the board.
+        if (!insideCanvas(c, t.clientX, t.clientY)) {
+            lastX = null;
+            lastY = null;
+            return;
+        }
+        const p = boardPoint(c, t.pageX, t.pageY);
+        if (penDown && lastX == null) {
+            lastX = p[0];
+            lastY = p[1];
+            return;
+        }
         draw(p[0], p[1]);
     }, true);
     c.addEventListener('touchend', (evt) => {
         evt.preventDefault();
-        lastX = null;
-        lastY = null;
+        penUp();
     }, false);
-    c.addEventListener('touchcancel', () => {
-        lastX = null;
-        lastY = null;
-    });
+    c.addEventListener('touchcancel', penUp);
 }
 
 
@@ -693,16 +733,29 @@ boardsOverlay.addEventListener('click', (e) => {
     }
 });
 
-let eraseAll = document.getElementById('erase-all');
-eraseAll.addEventListener('click', () => {
-    var eraseAllObject= {};
-    eraseAllObject.id = id;
-    eraseAllObject.room = room;
-    eraseAllObject.board = boardId;
-    if (!boardId) return;
-    socket.emit('eraseAll', eraseAllObject);
-    eraseAllRemote(eraseAllObject);
-})
+// ---- Erase whole board: needs three clicks in a row, like Remove ----
+const eraseAll = document.getElementById('erase-all');
+const ERASE_LABEL = 'Erase whole board';
+const eraseGuard = createMultiClick({
+    count: 3,
+    onProgress: (left) => {
+        eraseAll.classList.add('arming');
+        eraseAll.textContent = 'Click ' + left + ' more time' + (left === 1 ? '' : 's') + ' to erase';
+    },
+    onReset: () => {
+        eraseAll.classList.remove('arming');
+        eraseAll.textContent = ERASE_LABEL;
+    },
+    onConfirm: (bid) => {
+        eraseAll.classList.remove('arming');
+        eraseAll.textContent = ERASE_LABEL;
+        if (!bid || bid !== boardId) return;
+        const eraseAllObject = { id: id, room: room, board: bid };
+        socket.emit('eraseAll', eraseAllObject);
+        eraseAllRemote(eraseAllObject);
+    }
+});
+eraseAll.addEventListener('click', () => { if (boardId) eraseGuard.press(boardId); });
 
 let joinRoom = document.getElementById('join-room');
 joinRoom.addEventListener('click', () => {
@@ -734,4 +787,27 @@ overlay.addEventListener('click', (e) => {
     if (e.target === overlay) {
         overlay.classList.add("hidden");
     };
+});
+// ---- Options menu on phones (bug 2 / test B-08) ----
+// The extra toolbar buttons open in a pop-up above the toolbar. On wider
+// screens the menu button is hidden and the buttons stay in the toolbar.
+const optionsButton = document.getElementById('options-button');
+const toolbarEl = document.querySelector('.toolbar');
+function setOptionsOpen(open) {
+    document.body.classList.toggle('options-open', open);
+    optionsButton.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (open) document.body.style.setProperty('--toolbar-height', (toolbarEl.offsetHeight + 8) + 'px');
+}
+optionsButton.addEventListener('click', (evt) => {
+    evt.stopPropagation();
+    setOptionsOpen(!document.body.classList.contains('options-open'));
+});
+document.getElementById('toolbar-more').addEventListener('click', (evt) => {
+    const button = evt.target.closest('button');
+    // Erase and Remove need three clicks, so the menu stays open for those.
+    if (button && button.id !== 'erase-all' && button.id !== 'remove-board') setOptionsOpen(false);
+});
+document.addEventListener('click', (evt) => {
+    if (document.body.classList.contains('options-open') &&
+        !evt.target.closest('#toolbar-more') && evt.target !== optionsButton) setOptionsOpen(false);
 });

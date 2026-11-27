@@ -92,15 +92,20 @@
           <div class="board-state" id="board-state"></div>
         </div>
         <button id="save-board">Save</button>
+        <span class="save-status" id="save-status" role="status"></span>
+        <!-- On a phone these sit in a pop-up menu opened by "Options" (bug 2 / test B-08).
+             On a wider screen they show in the toolbar as before. -->
+        <button id="options-button" class="options-button" aria-expanded="false" aria-controls="toolbar-more">&#9776; Options</button>
+        <span id="toolbar-more" class="toolbar-more">
         <button id="rename-board">Rename</button>
         <button id="save-all">Save all</button>
         <button id="saved-boards">Saved boards</button>
         <button id="recover-boards" class="hidden">Restore unsaved</button>
-        <span class="save-status" id="save-status" role="status"></span>
         <button id="export-image">Export image</button>
-        <button id="erase-all">Erase whole board</button>
+        <button id="erase-all" class="erase-all" title="Clears this whiteboard for everyone. Click three times in a row.">Erase whole board</button>
         <button id="remove-board" class="remove-board" title="Removes this whiteboard for everyone. Click three times in a row.">Remove whiteboard</button>
         <button id="join-room">Join other room</button>
+        </span>
       </div>
       <div>
         <a id="vr-button" href="/vr.html">VR</a>

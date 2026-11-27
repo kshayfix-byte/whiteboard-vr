@@ -344,6 +344,25 @@ window.addEventListener('DOMContentLoaded', () => {
     });
     removeBoardButton.addEventListener('click', () => { if (selectedBoard()) removeGuard.press(selectedBoard()); });
 
+    // ---- Erase All: three touches in a row, like Remove (bug 4) ----
+    const eraseLabel = document.getElementById('vr-erase-all-label');
+    const ERASE_TEXT = 'Erase All (x3)';
+    const eraseGuard = createMultiClick({
+        count: 3,
+        onProgress: (left, id) => {
+            const info = roomBoards.find((b) => b.id === id);
+            showInScene('Erase \u201c' + shortName(info ? info.name : '') + '\u201d? Touch ' + left + ' more time' + (left === 1 ? '' : 's'));
+            if (eraseLabel) eraseLabel.setAttribute('value', 'Touch ' + left + ' more');
+        },
+        onReset: () => {
+            if (eraseLabel) eraseLabel.setAttribute('value', ERASE_TEXT);
+        },
+        onConfirm: (id) => {
+            eraseGuard.reset();
+            if (id === selectedBoard() && painter()) painter().eraseAll();
+        }
+    });
+
     socket.on('boardRemoved', (msg) => {
         if (!msg || normalizeRoom(msg.room) !== room || !boardEls[msg.board]) return;
         const index = roomBoards.findIndex((b) => b.id === msg.board);
@@ -359,6 +378,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
     onSelect((id) => {
         removeGuard.reset();
+        eraseGuard.reset();
         controls.setBoard(id);
         refreshBoards();
         updateSizeLabel();
@@ -776,7 +796,7 @@ window.addEventListener('DOMContentLoaded', () => {
         } else if (action === 'panel-mode') {
             toolPanel.nextMode();
         } else if (action === 'erase-all') {
-            if (painter()) painter().eraseAll();
+            if (selectedBoard()) eraseGuard.press(selectedBoard());
         }
     });
 
