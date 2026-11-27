@@ -19,6 +19,7 @@ import { layoutBoards, describePose, boardMetres } from './vr/layout';
 import { createBoardMover } from './vr/board-mover';
 import { createLocomotion } from './vr/locomotion';
 import { reachMode, setReachMode, onReachChange } from './vr/reach';
+import { createToolPanel, describePanelMode } from './vr/tool-panel';
 import { createMultiClick } from './triple-click';
 
 const FRAME_COLOR = '#acacac';
@@ -467,12 +468,28 @@ window.addEventListener('DOMContentLoaded', () => {
     });
     paintMoving();
     paintReach();
+
+    // ---- Where the tool panel sits: follows you, on your wrist, or stays ----
+    const toolPanel = createToolPanel({
+        scene: scene,
+        panel: document.getElementById('tool-panel'),
+        camera: document.getElementById('camera'),
+        busy: () => Array.from(document.querySelectorAll('.controller')).some((c) => mover.holds(c)),
+        status: showInScene
+    });
+    const panelLabel = document.getElementById('vr-panel-label');
+    function paintPanel() {
+        if (panelLabel) panelLabel.setAttribute('value', 'Panel: ' + describePanelMode(toolPanel.mode()));
+    }
+    toolPanel.onModeChange(paintPanel);
+    paintPanel();
+    window.whiteboardToolPanel = toolPanel; // for testing from the browser console
     setReachMode(reachMode()); // apply the remembered setting to the controllers
 
     scene.addEventListener('enter-vr', () => {
         setTimeout(() => showInScene(locomotion.mode() === 'smooth'
-            ? 'Tip: left thumbstick walks, right thumbstick turns. Grip moves a whiteboard.'
-            : 'Tip: push a thumbstick forward and let go to teleport. Grip moves a whiteboard.'), 1500);
+            ? 'Tip: left thumbstick walks, right thumbstick turns. Grip moves a whiteboard. B or Y brings the tool panel.'
+            : 'Tip: push a thumbstick forward and let go to teleport. Grip moves a whiteboard. B or Y brings the tool panel.'), 1500);
     });
 
     document.getElementById('vr-add-board').addEventListener('click', addBoard);
@@ -589,6 +606,9 @@ window.addEventListener('DOMContentLoaded', () => {
             setReachMode(reachMode() === 'short' ? 'long' : 'short');
         } else if (action === 'back-to-start') {
             locomotion.backToStart();
+            toolPanel.backToStart();
+        } else if (action === 'panel-mode') {
+            toolPanel.nextMode();
         } else if (action === 'erase-all') {
             if (painter()) painter().eraseAll();
         }

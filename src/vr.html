@@ -66,7 +66,10 @@
     <a-scene shadow="type: pcfsoft" renderer="antialias: true">
       <a-entity environment="groundTexture: none; grid: 1x1; gridColor: #111"></a-entity>
 
-      <a-entity position="0 0.3 0">
+      <!-- The tool panel. Where it sits (follows you, on your wrist, or stays put)
+           is set by the "Panel" button and src/vr/tool-panel.js, which also sets
+           this entity's position. -->
+      <a-entity id="tool-panel" position="0 0.3 0">
         <!-- <a-box material="color: #FFF; roughness: 0.4; metalness: 0.3" position="-0.8 1 -0.62" scale="0.1 1 0.05"></a-box>
         <a-box material="color: #FFF; roughness: 0.4; metalness: 0.3" position="0.8 1 -0.62" scale="0.1 1 0.05"></a-box>
         <a-box material="color: #FFF; roughness: 0.4; metalness: 0.3" position="0 1.525 -0.62" scale="1.7 0.05 0.05"></a-box>
@@ -98,6 +101,10 @@
 
         <a-entity position="-0.7 1.7 -0.6" room-number></a-entity>
 
+        <!-- Panel: Follow / Wrist / Stay (see src/vr/tool-panel.js). Top middle, clear of the room number and size buttons. -->
+        <a-text id="vr-panel-label" value="Panel: Follow" color="#03B594" anchor="left" position="-0.19 1.7 -0.6" width="1.2"></a-text>
+        <a-box class="hittable" vr-button="action: panel-mode; cooldown: 600" position="-0.25 1.7 -0.6" scale="0.08 0.08 0.03"></a-box>
+
         <a-text value="Save" color="#03B594" position="-0.98 1.43 -0.6" width="1.2"></a-text>
         <a-box class="hittable" vr-button="action: save" position="-0.9 1.35 -0.6" scale="0.08 0.08 0.03"></a-box>
         <a-text value="Save all" color="#03B594" position="-1.0 1.18 -0.6" width="1.2"></a-text>
@@ -128,9 +135,9 @@
         <a-box class="hittable" vr-button="action: reach; cooldown: 600" position="-0.15 0.2 -0.55" scale="0.08 0.08 0.03"></a-box>
         <a-text value="Back to start" color="#03B594" anchor="left" position="0.51 0.2 -0.55" width="1.2"></a-text>
         <a-box class="hittable" vr-button="action: back-to-start" position="0.45 0.2 -0.55" scale="0.08 0.08 0.03"></a-box>
-
-        <a-light type="directional" position="0 1.5 3" rotation="-45 0 0" intensity="0.4"></a-light>
       </a-entity>
+      <!-- Was inside the tool panel; kept still here so the lighting doesn't move with the panel. -->
+      <a-light type="directional" position="0 1.8 3" rotation="-45 0 0" intensity="0.4"></a-light>
 
       <!-- Whiteboards are added here by vr.js, one per board in the room. -->
       <a-entity id="boards"></a-entity>
