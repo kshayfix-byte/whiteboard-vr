@@ -4,8 +4,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   highlightTint, wrapCopies, unwrapX, opBounds, exportFilename,
-  describeSize, presetFor, BOARD_SIZES, isWrapBoard, describeWrapSize, normalizeRoom
+  describeSize, presetFor, BOARD_SIZES, isWrapBoard, describeWrapSize, normalizeRoom, SIZE_LIMITS
 } from '../src/board-client.js';
+import { createTileStore, tileRanges, tilesTouched, exportSize, MAX_CANVAS_PIXELS } from '../src/tile-store.js';
 import { createMultiClick } from '../src/triple-click.js';
 
 test('C-01 highlight tint is the colour mixed 50% with the background', () => {
@@ -39,9 +40,11 @@ test('C-05 export file name: board name + date and time', () => {
 });
 
 test('C-06 sizes and presets', () => {
-  assert.deepEqual(BOARD_SIZES.map((s) => s.label), ['Standard', 'Wide', 'Large', 'Wall', 'Tall']);
+  assert.deepEqual(BOARD_SIZES.map((s) => s.label), ['Standard', 'Wide', 'Large', 'Wall', 'Long wall', 'Tall']);
   assert.equal(describeSize(1500, 1000), '1.5 × 1 m');
   assert.equal(presetFor(4000, 2000).label, 'Wall');
+  assert.equal(presetFor(8000, 2000).label, 'Long wall');
+  assert.equal(SIZE_LIMITS.maxWidth, 8000);
   assert.equal(presetFor(1230, 990), null);
   assert.ok(isWrapBoard({ shape: 'cylinder' }));
   assert.ok(!isWrapBoard({ shape: 'flat' }));
@@ -124,4 +127,56 @@ test('C-11 panel controls share one colour scheme', () => {
   assert.equal(lookGrow(s({ flashing: true }), plain), PRESS_GROW, 'grows when pressed');
   assert.equal(lookGrow(s({}), plain), 1);
   assert.equal(lookGrow(s({ active: true }), { activeGrow: 1.25 }), 1.25);
+});
+
+// A stand-in canvas: records its size and the draw calls, nothing else.
+function fakeCanvas() {
+  const c = { width: 300, height: 150, calls: 0 };
+  const ctx = {
+    canvas: c,
+    save() {}, restore() {}, translate() {}, setTransform() {}, beginPath() {}, moveTo() {}, lineTo() {},
+    getTransform() { return { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }; },
+    fillRect() {}, clearRect() {}, drawImage() { c.calls++; }, stroke() { c.calls++; }
+  };
+  c.getContext = () => ctx;
+  return c;
+}
+
+test('C-12 wide boards are cut into 1 m tiles', () => {
+  assert.deepEqual(tileRanges(2500).map((t) => [t.x0, t.width]), [[0, 1000], [1000, 1000], [2000, 500]]);
+  assert.equal(tileRanges(8000).length, 8);
+  const r = tileRanges(3000);
+  assert.deepEqual(tilesTouched(r, { minX: 990, maxX: 1010 }), [0, 1], 'a stroke over a tile edge touches both');
+  assert.deepEqual(tilesTouched(r, { minX: 2990, maxX: 3010 }, 3000), [0, 2], '360 board: over the join');
+  assert.deepEqual(tilesTouched(r, null), [0, 1, 2]);
+});
+
+test('C-13 blank tiles take no memory until drawn on, and erasing frees them', () => {
+  globalThis.document = { createElement: () => fakeCanvas() };   // for the hidden ink layer
+  const changes = [];
+  const store = createTileStore(8000, 2500, { makeCanvas: fakeCanvas, onTileChange: (t) => changes.push(t.index) });
+  assert.equal(store.liveTiles(), 0);
+  assert.ok(store.tiles.every((t) => t.canvas.width === 1 && t.canvas.height === 1), 'blank tiles are 1 x 1');
+  changes.length = 0;
+  store.drawSegment({ lastX: 1500, lastY: 100, x: 1600, y: 200, size: 10, color: '#000' });
+  assert.equal(store.liveTiles(), 1);
+  assert.deepEqual([store.tiles[1].canvas.width, store.tiles[1].canvas.height], [1000, 2500]);
+  assert.deepEqual(changes, [1], 'only the touched tile is re-sent');
+  store.drawSegment({ lastX: 5000, lastY: 100, x: 5100, y: 200, size: 10, clearing: true });
+  assert.equal(store.liveTiles(), 1, 'erasing a blank tile leaves it blank');
+  store.replay({ ops: [{ type: 'stroke', x0: 10, y0: 10, x1: 20, y1: 20, size: 5, color: '#000' }] });
+  assert.equal(store.liveTiles(), 1);
+  assert.equal(store.tiles[0].live, true);
+  assert.equal(store.tiles[1].live, false, 'replay starts from a blank board');
+  store.clear();
+  assert.equal(store.liveTiles(), 0);
+  assert.ok(store.resize(4000, 2000));
+  assert.equal(store.tiles.length, 4);
+});
+
+test('C-14 exports too big for iPhone / iPad are scaled down', () => {
+  assert.deepEqual(exportSize(4000, 2000), { width: 4000, height: 2000, scale: 1 });
+  const big = exportSize(8000, 2500);
+  assert.ok(big.width * big.height <= MAX_CANVAS_PIXELS);
+  assert.ok(Math.abs(big.width / big.height - 3.2) < 0.01, 'keeps its shape');
 });

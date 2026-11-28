@@ -485,8 +485,8 @@ These come from the feature PRs and from reading the code. Each points to the te
 | Risk | Where to look |
 |---|---|
 | Never tested on a real headset: everything in sections D, G and K to O marked **H** | All **H** tests |
-| Every stroke re-uploads the whole board texture. A 4 × 2.5 m board is about 40 MB, so drawing may stutter | J-18, P-04 |
-| 360° boards with the highlighter use about 170 MB of canvas memory | N-16, P-05 |
+| Boards are drawn in 1 m tiles: a stroke re-uploads only the tiles it touches, and blank tiles take almost no memory. A fully written 8 × 2.5 m board is still about 160 MB in 2D (iPhone/iPad allow 384 MB of canvases per page) and about 240 MB in VR | J-18, P-04 |
+| The highlighter adds a full-size layer to each tile it touches (about 4 MB per square metre) | N-16, P-05 |
 | The naming pop-up window may not open from inside VR on some headset browsers (there's a fallback) | G-02 to G-05 |
 | The Wrist panel's size, offset, tilt and hand are guesses | M-10 |
 | Guessed values to tune: teleport default, 30° snap turn, 2 m/s walking, 25 m limit, 12 m reach, 65° / 0.6 s follow, highlighter 50% and 30 px, 360° board 8 m × 1.8 m | L, M, N, O |

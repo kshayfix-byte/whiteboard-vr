@@ -104,7 +104,7 @@ Closed the list by accident? Press **Restore unsaved** in the toolbar to bring i
 
 ### Board sizes and 360° boards
 
-- **Board size:** choose a preset (Standard 1.5 × 1 m, Wide 3 × 1 m, Large 2.5 × 1.5 m, Wall 4 × 2 m, Tall 1 × 2 m) or type your own size (width 0.5 to 4 m, height 0.5 to 2.5 m). Drawings keep their size and stay in the middle. In 2D, press the **Size** button; in VR, the **Size** button steps through the presets. The size changes for everyone.
+- **Board size:** choose a preset (Standard 1.5 × 1 m, Wide 3 × 1 m, Large 2.5 × 1.5 m, Wall 4 × 2 m, Long wall 8 × 2 m, Tall 1 × 2 m) or type your own size (width 0.5 to 8 m, height 0.5 to 2.5 m). Drawings keep their size and stay in the middle. In 2D, press the **Size** button; in VR, the **Size** button steps through the presets. The size changes for everyone.
 - **Zoom (2D):** **−**, **+** and **Fit** zoom the board on screen.
 - **360° boards:** **+ Add 360° board** adds a round whiteboard that goes all the way around you. In VR, press **Go inside** to stand in the middle and **Step out** to leave. On screen, **◀ Turn** and **Turn ▶** spin the view and **Front** goes back to the front. 360° boards have a fixed size.
 

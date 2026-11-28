@@ -9,11 +9,9 @@ export function normalizeRoom(room) {
 export function clearCanvas(context2D, canvas, background) {
     const L = layersFor(context2D);
     if (L) {
-        L.paper.save();
-        L.paper.setTransform(1, 0, 0, 1, 0, 0);
-        L.paper.fillStyle = background || DEFAULT_BACKGROUND;
-        L.paper.fillRect(0, 0, L.paper.canvas.width, L.paper.canvas.height);
-        L.paper.restore();
+        // A clean board has no highlights, so no paper layer (see useLayers).
+        L.background = background || DEFAULT_BACKGROUND;
+        dropPaper(L);
         L.ink.save();
         L.ink.setTransform(1, 0, 0, 1, 0, 0);
         L.ink.clearRect(0, 0, L.ink.canvas.width, L.ink.canvas.height);
@@ -25,8 +23,11 @@ export function clearCanvas(context2D, canvas, background) {
 
 // ---- Layers: paper (with highlights) under ink ----
 // So that highlights can be erased without touching the writing, a board
-// canvas set up with useLayers() keeps two hidden canvases behind it:
-// - "paper": the board background plus all highlights;
+// canvas set up with useLayers() keeps up to two hidden canvases behind it:
+// - "paper": the board background plus all highlights. It only exists once
+//   something has been highlighted (until then it would be plain background,
+//   so the background colour stands in for it), which saves a full-size copy
+//   of the board on boards without highlights;
 // - "ink": marker strokes only, see-through everywhere else.
 // What you see (the canvas itself, which is also the VR texture and what
 // Export saves) is paper with ink on top, redrawn just around each stroke.
@@ -48,12 +49,30 @@ function makeLayer(width, height) {
 export function useLayers(canvas) {
     if (!layerMap.has(canvas)) {
         layerMap.set(canvas, {
-            paper: makeLayer(canvas.width, canvas.height),
+            paper: null,   // made on the first highlight (needPaper)
             ink: makeLayer(canvas.width, canvas.height),
+            background: DEFAULT_BACKGROUND,
             hold: false
         });
     }
     return canvas;
+}
+
+// The paper layer, made (filled with the background) if there isn't one yet.
+function needPaper(L) {
+    if (!L.paper) {
+        L.paper = makeLayer(L.ink.canvas.width, L.ink.canvas.height);
+        L.paper.fillStyle = L.background;
+        L.paper.fillRect(0, 0, L.paper.canvas.width, L.paper.canvas.height);
+    }
+    return L.paper;
+}
+
+function dropPaper(L) {
+    if (!L.paper) return;
+    L.paper.canvas.width = 0;   // frees its memory straight away
+    L.paper.canvas.height = 0;
+    L.paper = null;
 }
 
 function layersFor(context2D) {
@@ -63,7 +82,7 @@ function layersFor(context2D) {
     // The board was resized: the layers follow (that wipes them; callers
     // clear or redraw the board after a resize anyway).
     [L.paper, L.ink].forEach((layer) => {
-        if (layer.canvas.width !== c.width || layer.canvas.height !== c.height) {
+        if (layer && (layer.canvas.width !== c.width || layer.canvas.height !== c.height)) {
             layer.canvas.width = c.width;
             layer.canvas.height = c.height;
         }
@@ -86,7 +105,12 @@ function composeRect(context2D, L, rect) {
     context2D.save();
     context2D.setTransform(1, 0, 0, 1, 0, 0);
     context2D.globalCompositeOperation = 'source-over';
-    context2D.drawImage(L.paper.canvas, x, y, w, h, x, y, w, h);
+    if (L.paper) {
+        context2D.drawImage(L.paper.canvas, x, y, w, h, x, y, w, h);
+    } else {
+        context2D.fillStyle = L.background;
+        context2D.fillRect(x, y, w, h);
+    }
     context2D.drawImage(L.ink.canvas, x, y, w, h, x, y, w, h);
     context2D.restore();
 }
@@ -199,12 +223,13 @@ function paintStroke(context2D, x0, y0, x1, y1, s, background, wrap) {
         return;
     }
     const m = context2D.getTransform ? context2D.getTransform() : { a: 1, d: 1, e: 0, f: 0 };
-    [L.paper, L.ink].forEach((layer) => layer.setTransform(m.a, m.b || 0, m.c || 0, m.d, m.e, m.f));
+    if (s.highlight && !s.erase) needPaper(L);
+    [L.paper, L.ink].forEach((layer) => { if (layer) layer.setTransform(m.a, m.b || 0, m.c || 0, m.d, m.e, m.f); });
     const r = (Number(s.size) || 0) / 2 + 2;
     copies.forEach((dx) => {
         const ax = x0 + dx, bx = x1 + dx;
         if (s.erase) {
-            strokeLine(L.paper, ax, y0, bx, y1, bg, s.size, 'source-over');
+            if (L.paper) strokeLine(L.paper, ax, y0, bx, y1, bg, s.size, 'source-over');
             if (!s.highlight) strokeLine(L.ink, ax, y0, bx, y1, '#000', s.size, 'destination-out');
         } else if (s.highlight) {
             strokeLine(L.paper, ax, y0, bx, y1, highlightTint(s.color, bg), s.size, 'darken');
@@ -321,7 +346,12 @@ export function formatDate(iso) {
 export const PX_PER_METRE = 1000;
 export const DEFAULT_WIDTH = 1500;
 export const DEFAULT_HEIGHT = 1000;
-export const SIZE_LIMITS = { minWidth: 500, maxWidth: 4000, minHeight: 500, maxHeight: 2500 };
+// 8 m wide at most: boards are drawn in 1 m tiles (tile-store.js), so the
+// width is limited by memory, not by the largest canvas or texture. 8 m x
+// 2.5 m fully written on is about 160 MB on the 2D page (iPhone / iPad
+// Safari allows 384 MB of canvases per page) and about 240 MB in VR
+// (Quest 2 and up). Blank parts of a board take almost no memory.
+export const SIZE_LIMITS = { minWidth: 500, maxWidth: 8000, minHeight: 500, maxHeight: 2500 };
 
 // Ready-made sizes, in pixels. The VR "Board size" button steps through them.
 export const BOARD_SIZES = [
@@ -329,6 +359,7 @@ export const BOARD_SIZES = [
     { id: 'wide', label: 'Wide', width: 3000, height: 1000 },
     { id: 'large', label: 'Large', width: 2500, height: 1500 },
     { id: 'wall', label: 'Wall', width: 4000, height: 2000 },
+    { id: 'long', label: 'Long wall', width: 8000, height: 2000 },
     { id: 'tall', label: 'Tall', width: 1000, height: 2000 }
 ];
 

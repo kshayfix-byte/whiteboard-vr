@@ -79,9 +79,11 @@ test('U-05 names are cleaned and limited to 80 characters', () => {
   assert.match(temporaryName(), /^Whiteboard_\d{4}$/);
 });
 
-test('U-06 flat sizes: 0.5-4 m wide, 0.5-2.5 m high, whole centimetres', () => {
+test('U-06 flat sizes: 0.5-8 m wide, 0.5-2.5 m high, whole centimetres', () => {
   assert.deepEqual(cleanFlatSize(4000, 2000), { width: 4000, height: 2000 });
   assert.deepEqual(cleanFlatSize(1234, 987), { width: 1230, height: 990 });
+  assert.deepEqual(cleanFlatSize(8000, 2500), { width: 8000, height: 2500 });
+  assert.equal(cleanFlatSize(8100, 1000), null);
   assert.equal(cleanFlatSize(9000, 1000), null);
   assert.equal(cleanFlatSize(400, 1000), null);
   assert.equal(cleanFlatSize(1500, 2600), null);

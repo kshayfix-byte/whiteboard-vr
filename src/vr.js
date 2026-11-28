@@ -18,7 +18,7 @@ import {
     socket, room, initialBoard, tools, onToolChange, selectedBoard, selectBoard, onSelect
 } from './vr/session';
 import { layoutBoards, describePose, boardMetres, insideWrap } from './vr/layout';
-import { wrapMetres } from './vr/wrap-surface';
+import { wrapMetres } from './vr/board-surface';
 import { createBoardMover } from './vr/board-mover';
 import { createLocomotion } from './vr/locomotion';
 import { reachMode, setReachMode, onReachChange } from './vr/reach';
@@ -108,7 +108,7 @@ function createLabel() {
     return { el: label, text: labelText, back: labelBack };
 }
 
-// A 360-degree board: a round wall you stand inside (see vr/wrap-surface.js).
+// A 360-degree board: a round wall you stand inside (see vr/board-surface.js).
 // Its "frame" is a rim round the top and bottom edges; its name tag is on the
 // front of the wall, once facing in and once facing out.
 function createWrapBoardEl(id, width, height) {
