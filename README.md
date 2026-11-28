@@ -8,8 +8,6 @@ A web-bassed online whiteboard which is platform independent. Use VR, Desktop or
 
 Video: [https://www.youtube.com/watch?v=YjOsA-EFc9I&feature=youtu.be](https://www.youtube.com/watch?v=YjOsA-EFc9I&feature=youtu.be)
 
-Try it yourself: [https://whiteboard-vr.herokuapp.com](https://whiteboard-vr.herokuapp.com)
-
 ## How to run locally
 
 1. Clone the project `git clone https://github.com/marlon360/whiteboard-vr.git`
