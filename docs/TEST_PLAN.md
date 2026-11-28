@@ -49,13 +49,16 @@ npm start            # http://localhost:3000
 
 Browsers only allow VR on `https://` pages (or `localhost`). Pick one:
 
-1. **HTTPS server in this repo.** Make a self-signed certificate in the project folder, then start the SSL server:
+1. **HTTPS server in this repo.** Make a self-signed certificate once, in the project folder, then start the server as usual:
    ```bash
-   openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365 -subj "/CN=whiteboard"
-   # it asks for a passphrase; use the same one below
-   SSL_PASSPHRASE=<your passphrase> npm run start:ssl
+   npm run cert         # once: makes key.pem and cert.pem (no passphrase)
+   npm run build && npm start
    ```
-   Open `https://<your computer's IP>:3000` in the headset browser and accept the certificate warning. Don't commit `key.pem` / `cert.pem`.
+   The server now runs on two ports, and prints both addresses when it starts:
+   - `http://<your computer's IP>:3000` for computers and phones (no VR).
+   - `https://<your computer's IP>:3443` for headsets. Accept the certificate warning once on each device ("Advanced", then "Proceed").
+
+   Don't type `https://` with port 3000: that port is plain http, and the browser shows `ERR_SSL_PROTOCOL_ERROR`. Change the ports with `PORT=` and `HTTPS_PORT=`. Don't commit `key.pem` / `cert.pem` (they're in `.gitignore`). A key made the old way, with a passphrase, still works: start with `SSL_PASSPHRASE=<passphrase> npm start`.
 2. **USB to a Quest.** Run `npm start`, connect the headset with a cable, run `adb reverse tcp:3000 tcp:3000`, and open `http://localhost:3000` in the headset.
 3. **A tunnel** (for example ngrok or Cloudflare Tunnel) that gives an `https://` address for port 3000.
 
@@ -459,4 +462,5 @@ Copy a row for each problem. Put the bug number in the test's Notes column.
 | 10 | C-06 (new feature) | D, V | No way to rename a board in the restore list before saving or restoring | A small edit symbol on each row | Same as bug 8 | Feature | Resolved (retest passed 2026-11-27): **✎** on each row turns the name into a text box. The new name is used by Save selected, Restore and open and Restore all. Retest with F-15, F-16 |
 | 11 | F-15 | D, Safari | The rename box from ✎ is extremely narrow, so only part of one character shows while typing | The box is wide enough to see the name | Press ✎ on a row and type | Minor | Resolved (retest passed 2026-11-27): the name area now fills the row and the box is at least 16 characters wide. Retest with F-15 |
 | 12 | F-14 (layout) | D, M | The restore dialog's buttons sit to the right with empty space on the left, and Restore all wraps onto a line of its own | Buttons spread evenly across the dialog | Open the restore dialog | Minor | Resolved (retest passed 2026-11-27): the buttons stretch to share the full width; on a desktop they sit on one row, on a phone they wrap into even rows. Retest with F-18 |
-| 13 | | | | | | | |
+| 13 | Setup (headset) | D, V | Opening `https://<IP>:3000` gives ERR_SSL_PROTOCOL_ERROR | The https page loads | Start with `npm start`, open the https address | Major | Fixed, awaiting retest: `npm start` now serves http on 3000 and, after `npm run cert`, https on 3443; the start-up message prints both addresses. Retest: open `https://<IP>:3443` |
+| 14 | | | | | | | |
