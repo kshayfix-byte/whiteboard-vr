@@ -1,4 +1,4 @@
-canvas {
+canvas, .board-tiles {
     user-select: none;
     -webkit-user-select: none;
     margin: 20px auto;
@@ -6,6 +6,21 @@ canvas {
     display: block;
     box-shadow: 0 0 0 12px #7D868A,  0 5px 38px 0 rgba(116,116,116,0.50);
     border-radius: 10px;
+}
+/* A flat board: its 1 m tiles side by side (see src/tile-store.js). */
+.board-tiles {
+    position: relative;
+    overflow: hidden;
+}
+.board-tiles canvas.board-tile,
+body.zoomed .board-tiles canvas.board-tile {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    margin: 0;
+    box-shadow: none;
+    border-radius: 0;
+    touch-action: none;
 }
 .toolbar {
     position: fixed;
@@ -311,7 +326,7 @@ button:disabled, button:disabled:hover {
 body.zoomed #canvas-holder {
     margin-bottom: 140px; /* so the bottom of the board can scroll above the toolbar */
 }
-body.zoomed canvas {
+body.zoomed canvas, body.zoomed .board-tiles {
     margin: 20px;
 }
 body {

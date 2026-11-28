@@ -2,17 +2,17 @@
 // (texture) and listens only to drawings for its own board id. Pen settings
 // are shared by all boards (see ../vr/session.js).
 //
-// shape "flat": the entity is an a-plane and this component paints its
-// texture. shape "cylinder": a 360-degree board; this component builds the
-// wall itself (see ../vr/wrap-surface.js), and strokes may cross the join
-// between the canvas's left and right edges.
+// Both shapes draw on tiles (see ../vr/board-surface.js and
+// ../tile-store.js). shape "flat": the entity is an a-plane (the pointer hits
+// it) with the tiles shown on top. shape "cylinder": a 360-degree board; this
+// component builds the wall itself, and strokes may cross the join between
+// the canvas's left and right edges.
 import {
-    DEFAULT_BACKGROUND, normalizeRoom, clearCanvas, drawSegment, replayBoard,
-    exportFilename, downloadCanvas, sizeCanvas, unwrapX, useLayers
+    DEFAULT_BACKGROUND, normalizeRoom, exportFilename, downloadCanvas, unwrapX
 } from '../board-client';
 import { socket, room, tools, selectBoard } from '../vr/session';
 import { nearestHit, canDrawAt } from '../vr/reach';
-import { createWrapSurface } from '../vr/wrap-surface';
+import { createFlatSurface, createWrapSurface } from '../vr/board-surface';
 
 // Drawing from far away: hand shake grows with distance, so strokes drawn
 // from more than STEADY_FROM metres are smoothed a little (more the further
@@ -99,85 +99,59 @@ AFRAME.registerComponent('texture-painter', {
             return;
         }
 
-        // Clamp + linear filtering without mipmaps lets the texture keep the
-        // canvas's real size. (With the original repeat wrapping, three.js
-        // shrank every board to a power of two, e.g. 1500x1000 to 1024x1024,
-        // which would make large boards blurry.) Boards bigger than the GPU's
-        // largest texture are still scaled down by three.js.
-        var planeTexture = new THREE.Texture( undefined, THREE.UVMapping, THREE.ClampToEdgeWrapping, THREE.ClampToEdgeWrapping,
-            THREE.LinearFilter, THREE.LinearFilter );
-        planeTexture.generateMipmaps = false;
-        this.planeMaterial = new THREE.MeshPhongMaterial( { map: planeTexture, shininess: 50 } );
+        // Flat board: the a-plane stays as the thing the pointer hits, but is
+        // not drawn; the board's tiles are drawn on top of it (see
+        // ../vr/board-surface.js).
+        this.surface = createFlatSurface(this.data.width, this.data.height);
+        this.surface.clear(this.background);
+        this.hiddenMaterial = new THREE.MeshBasicMaterial({ visible: false });
         // The mesh may not exist yet when the board is created from code.
         const useMaterial = () => {
             this.mesh = this.el.getObject3D('mesh');
-            if (this.mesh) this.mesh.material = this.planeMaterial;
+            if (this.mesh) this.mesh.material = this.hiddenMaterial;
         };
         useMaterial();
         this.el.addEventListener('object3dset', (evt) => { if (evt.detail.type === 'mesh') useMaterial(); });
-
-        this.parentTexture = planeTexture;
-        this._parentTexture = [];
-
-        this._canvas = document.createElement( "canvas" );
-        this._canvas.width = this.data.width;
-        this._canvas.height = this.data.height;
-        useLayers(this._canvas);   // highlights under ink (see board-client.js)
-        this._context2D = this._canvas.getContext( "2d" );
-    
-        this.parentTexture.image = this._canvas;
-
-        // draw background
-        clearCanvas(this._context2D, this._canvas, this.background);
-
-        this.parentTexture.needsUpdate = true;
+        this.el.setObject3D('tiles', this.surface.group);
         this.ready = true;
     },
     remove: function () {
         socket.off('remoteDraw', this.onRemoteDraw);
         socket.off('remoteEraseAll', this.onRemoteEraseAll);
         if (this.surface) {
-            this.el.removeObject3D('mesh');
+            this.el.removeObject3D(this.wrapBoard ? 'mesh' : 'tiles');
             this.surface.dispose();
         }
     },
     // Size of the board's canvas in pixels.
     boardWidth: function () {
-        return this.surface ? this.surface.width : this._canvas.width;
+        return this.surface.width;
     },
     boardHeight: function () {
-        return this.surface ? this.surface.height : this._canvas.height;
+        return this.surface.height;
     },
     // Canvas point { x, y } for a pointer hit on this board, or null.
     pointFromHit: function (hit) {
         if (!hit) return null;
-        if (this.surface) return this.surface.pointFromHit(hit);
-        if (!hit.uv) return null;
-        return { x: hit.uv.x * this._canvas.width, y: (1 - hit.uv.y) * this._canvas.height };
+        return this.surface.pointFromHit(hit);
     },
     mine: function (obj) {
         return obj && room == normalizeRoom(obj.room) && (obj.board || 'main') === this.boardId;
     },
-    // The board was resized: give the canvas the new size (this wipes it;
-    // loadState() redraws it right after) and re-upload the texture.
+    // The board was resized: new tiles at the new size (this wipes the
+    // board; loadState() redraws it right after). 360-degree boards have a
+    // fixed size, so their surface ignores this.
     resize: function (width, height) {
-        if (this.surface) return; // 360-degree boards have a fixed size
-        if (!sizeCanvas(this._canvas, width, height)) return;
-        this.pens.clear();
-        clearCanvas(this._context2D, this._canvas, this.background);
-        this.parentTexture.dispose(); // the GPU copy has the old size
-        this.parentTexture.needsUpdate = true;
+        if (this.surface.resize(width, height)) {
+            this.pens.clear();
+            this.surface.clear(this.background);
+        }
     },
     loadState: function (state) {
         this.pens.clear();
         this.background = state.background || DEFAULT_BACKGROUND;
-        if (this.surface) {
-            this.surface.replay(state);
-        } else {
-            if (state.width && state.height) this.resize(state.width, state.height);
-            replayBoard(this._context2D, this._canvas, state);
-            this.parentTexture.needsUpdate = true;
-        }
+        if (!this.wrapBoard && state.width && state.height) this.resize(state.width, state.height);
+        this.surface.replay(state);
         this.boardName = state.name || '';
         this.loaded = true;
     },
@@ -186,12 +160,7 @@ AFRAME.registerComponent('texture-painter', {
             return;
         }
         if (remoteDrawObject.lastX == null || remoteDrawObject.lastY == null) return;
-        if (this.surface) {
-            this.surface.drawSegment(remoteDrawObject);
-        } else {
-            drawSegment(this._context2D, remoteDrawObject, this.background);
-            this.parentTexture.needsUpdate = true;
-        }
+        this.surface.drawSegment(remoteDrawObject);
     },
     setBoardName: function(name) {
         this.boardName = name || '';
@@ -199,19 +168,14 @@ AFRAME.registerComponent('texture-painter', {
     // Download the board as a PNG via the browser's normal download.
     // A 360-degree board exports as one wide panorama.
     exportImage: function() {
-        const canvas = this.surface ? this.surface.toCanvas() : this._canvas;
+        const canvas = this.surface.toCanvas();
         downloadCanvas(canvas, exportFilename(this.boardName, room));
     },
     eraseAllRemote: function(remoteEraseAllObject) {
         if (!this.mine(remoteEraseAllObject)) {
             return;
         }
-        if (this.surface) {
-            this.surface.clear(this.background);
-            return;
-        }
-        clearCanvas(this._context2D, this._canvas, this.background);
-        this.parentTexture.needsUpdate = true;
+        this.surface.clear(this.background);
     },
     // Where `key` (a controller, or 'mouse') last drew on this board.
     pen: function (key) {
@@ -263,7 +227,7 @@ AFRAME.registerComponent('texture-painter', {
     },
     // On a 360-degree board, keep x next to the stroke's last point (see unwrapX).
     wrapX: function (x, pen) {
-        return this.surface ? unwrapX(x, pen && pen.lastX, this.surface.width) : x;
+        return this.wrapBoard ? unwrapX(x, pen && pen.lastX, this.surface.width) : x;
     },
     cameraSetActive: function() {
         this.camera = this.el.sceneEl.camera;

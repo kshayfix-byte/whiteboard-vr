@@ -1,15 +1,16 @@
 import io from 'socket.io-client';
 import {
-    DEFAULT_BACKGROUND, normalizeRoom, clearCanvas, drawSegment, replayBoard,
+    DEFAULT_BACKGROUND, normalizeRoom,
     exportFilename, downloadCanvas, formatDate,
     BOARD_SIZES, SIZE_LIMITS, PX_PER_METRE, DEFAULT_WIDTH, DEFAULT_HEIGHT,
-    describeSize, presetFor, metres, sizeCanvas, useLayers,
+    describeSize, presetFor, metres,
     isWrapBoard, describeWrapSize, unwrapX,
     HIGHLIGHT_COLORS, HIGHLIGHT_NAMES, DEFAULT_HIGHLIGHT_SIZE
 } from './board-client';
 import { createSaveControls } from './save-controls';
 import { createRecoveryUI } from './recovery-ui';
 import { createMultiClick } from './triple-click';
+import { createTileStore } from './tile-store';
 
 function getParameterByName(name, url) {
     if (!url) url = window.location.href;
@@ -49,13 +50,17 @@ function pen() {
     return tool === 'highlighter' || tool === 'hl-eraser' ? pens.highlighter : pens.marker;
 }
 
-// Every whiteboard in the room has its own canvas; only the current one is
-// shown. boards[boardId] = { canvas, context2D, background, loaded, el, wrap, offset }.
+// Every whiteboard in the room has its own pixels; only the current one is
+// shown. boards[boardId] = { store, background, loaded, el, wrap, offset }.
 //
-// `canvas` holds the board itself. For flat boards it is also what's on the
-// page (`el`). A 360-degree board is a panorama whose left and right edges
-// join up: its canvas stays off the page and `el` is a second canvas showing
-// it turned by `offset` pixels (the Turn buttons), so any part of the wall,
+// `store` holds the board itself, cut into tiles 1 m wide (see
+// tile-store.js), so a wide board never needs one huge canvas (iPhone and
+// iPad Safari can't draw a canvas over 16.7 million pixels) and blank parts
+// take almost no memory. store.width / store.height are the board's size.
+// For flat boards the tiles' canvases sit side by side inside `el`, a box on
+// the page. A 360-degree board is a panorama whose left and right edges join
+// up: its tiles stay off the page and `el` is a canvas showing the wall
+// turned by `offset` pixels (the Turn buttons), so any part of the wall,
 // including the join, can be brought to the middle of the screen.
 const boards = {};
 const canvasHolder = document.getElementById('canvas-holder');
@@ -65,8 +70,7 @@ let roomBoards = [];            // roomInfo.boards
 let wantedBoard = getParameterByName('board'); // from the URL, if any
 let boardId = null;             // the board shown and drawn on
 let boardName = '';
-let canvas = null;              // current board's canvas
-let context2D = null;
+let canvas = null;              // current board's tile store (has .width / .height)
 let viewEl = null;              // what's on the page for the current board (see above)
 
 const controls = createSaveControls({
@@ -90,33 +94,44 @@ const controls = createSaveControls({
 function boardFor(bid, width, height, shape) {
     if (boards[bid]) return boards[bid];
     const wrap = shape === 'cylinder';
-    const c = document.createElement('canvas');
-    c.width = width || DEFAULT_WIDTH;
-    c.height = height || DEFAULT_HEIGHT;
-    useLayers(c);   // highlights under ink, so highlights can be erased on their own
-    let el = c;
+    const store = createTileStore(width || DEFAULT_WIDTH, height || DEFAULT_HEIGHT, { wrap: wrap });
+    let el;
     if (wrap) {
         el = document.createElement('canvas');
-        el.width = c.width;
-        el.height = c.height;
+        el.width = store.width;
+        el.height = store.height;
+    } else {
+        el = document.createElement('div');
     }
-    el.className = 'board-canvas hidden' + (wrap ? ' wrap-board' : '');
+    el.className = 'board-canvas hidden' + (wrap ? ' wrap-board' : ' board-tiles');
     el.dataset.board = bid;
     canvasHolder.appendChild(el);
     attachDrawing(el);
     const b = {
-        canvas: c, context2D: c.getContext('2d'), background: DEFAULT_BACKGROUND, loaded: false,
+        store: store, canvas: store, background: DEFAULT_BACKGROUND, loaded: false,
         el: el, wrap: wrap, offset: 0, viewPending: false
     };
-    clearCanvas(b.context2D, c, b.background);
+    store.clear(b.background);
+    placeTiles(b);
     boards[bid] = b;
     refreshView(b);
     return b;
 }
 
-// How far a 360-degree board's edges are apart (0 for flat boards).
-function wrapWidth(b) {
-    return b && b.wrap ? b.canvas.width : 0;
+// Put a flat board's tile canvases side by side in its box (again after a
+// resize, which makes new tiles). Each is stretched to its share of the box,
+// so a blank 1 x 1 pixel tile shows as plain background.
+function placeTiles(b) {
+    if (b.wrap) return;
+    const w = b.store.width;
+    b.el.style.backgroundColor = b.background;
+    b.el.textContent = '';
+    b.store.tiles.forEach((t) => {
+        t.canvas.className = 'board-tile';
+        t.canvas.style.left = (t.x0 / w * 100) + '%';
+        t.canvas.style.width = (t.width / w * 100) + '%';
+        b.el.appendChild(t.canvas);
+    });
 }
 
 // Redraw what's on the page for a 360-degree board (once per frame at most).
@@ -125,13 +140,13 @@ function refreshView(b) {
     b.viewPending = true;
     window.requestAnimationFrame(() => {
         b.viewPending = false;
-        const w = b.canvas.width;
-        const h = b.canvas.height;
+        const w = b.store.width;
+        const h = b.store.height;
         const off = ((b.offset % w) + w) % w;
         const ctx = b.el.getContext('2d');
         // Board x = view x + offset (wrapping round).
-        ctx.drawImage(b.canvas, off, 0, w - off, h, 0, 0, w - off, h);
-        if (off > 0) ctx.drawImage(b.canvas, 0, 0, off, h, w - off, 0, off, h);
+        b.store.drawTo(ctx, 0, 0, 1, off, w - off);
+        if (off > 0) b.store.drawTo(ctx, w - off, 0, 1, 0, off);
         // Small tags at the top: where "in front" and "behind" are in VR.
         ctx.save();
         const fs = Math.round(h / 28);   // readable when the whole panorama fits the screen
@@ -160,8 +175,7 @@ function showBoard(bid) {
     lastX = null;
     lastY = null;
     Object.keys(boards).forEach((k) => boards[k].el.classList.toggle('hidden', k !== bid));
-    canvas = boards[bid].canvas;
-    context2D = boards[bid].context2D;
+    canvas = boards[bid].store;
     viewEl = boards[bid].el;
     controls.setBoard(bid);
     const url = 'index.html?room=' + encodeURIComponent(room) + (bid === 'main' ? '' : '&board=' + encodeURIComponent(bid));
@@ -213,9 +227,10 @@ socket.on('boardState', (state) => {
     b.background = state.background || DEFAULT_BACKGROUND;
     // The board may have been resized (by anyone); resizing the canvas wipes
     // it, and the replay below redraws everything.
-    const resized = sizeCanvas(b.canvas, state.width, state.height);
-    if (resized && b.wrap) sizeCanvas(b.el, state.width, state.height);
-    replayBoard(b.context2D, b.canvas, state);
+    const resized = !b.wrap && !!state.width && !!state.height && b.store.resize(state.width, state.height);
+    if (resized) placeTiles(b);
+    b.store.replay(state);
+    if (!b.wrap) b.el.style.backgroundColor = b.background;
     refreshView(b);
     b.loaded = true;
     if (resized && state.board === boardId) {
@@ -305,7 +320,7 @@ function eraseAllRemote(eraseAllRemoteObject) {
     }
     const b = boards[eraseAllRemoteObject.board || 'main'];
     if (!b) return;
-    clearCanvas(b.context2D, b.canvas, b.background);
+    b.store.clear(b.background);
     refreshView(b);
 }
 
@@ -315,7 +330,7 @@ function drawRemote(remoteDrawObject) {
     }
     const b = boards[remoteDrawObject.board || 'main'];
     if (!b) return;
-    drawSegment(b.context2D, remoteDrawObject, b.background, wrapWidth(b));
+    b.store.drawSegment(remoteDrawObject);
     refreshView(b);
 }
 
@@ -349,9 +364,12 @@ function canvasPoint(c, pageX, pageY) {
     const rect = c.getBoundingClientRect();
     const x = pageX - window.pageXOffset - rect.left;
     const y = pageY - window.pageYOffset - rect.top;
+    const b = boards[c.dataset.board];
+    const w = b ? b.store.width : c.width;
+    const h = b ? b.store.height : c.height;
     return [
-        x * (c.width / rect.width),
-        y * (c.height / rect.height)
+        x * (w / rect.width),
+        y * (h / rect.height)
     ];
 }
 
@@ -361,7 +379,7 @@ function canvasPoint(c, pageX, pageY) {
 function boardPoint(c, pageX, pageY) {
     const p = canvasPoint(c, pageX, pageY);
     const b = boards[boardId];
-    if (b && b.wrap) p[0] = unwrapX(p[0] + b.offset, lastX, b.canvas.width);
+    if (b && b.wrap) p[0] = unwrapX(p[0] + b.offset, lastX, b.store.width);
     return p;
 }
 
@@ -607,7 +625,7 @@ function updateWrapControls() {
 function turnView(direction) {
     const b = boards[boardId];
     if (!b || !b.wrap) return;
-    const w = b.canvas.width;
+    const w = b.store.width;
     b.offset = (((b.offset + direction * w / TURN_STEPS) % w) + w) % w;
     lastX = null;
     lastY = null;
@@ -694,7 +712,7 @@ onResize()
 
 let exportImage = document.getElementById('export-image');
 exportImage.addEventListener('click', () => {
-    if (canvas) downloadCanvas(canvas, exportFilename(boardName, room));
+    if (canvas) downloadCanvas(canvas.toCanvas(), exportFilename(boardName, room));
 })
 
 
