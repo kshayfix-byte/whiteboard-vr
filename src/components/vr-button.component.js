@@ -2,7 +2,9 @@ import { nearestHit } from '../vr/reach';
 
 // A button in the VR scene. Point at it and pull the trigger (or click it with
 // the mouse outside VR) and it emits `vr-action` on the scene with its action,
-// e.g. "save", "save-all" or "export". Set `enabled: false` to grey it out.
+// e.g. "save", "save-all" or "export". Set `enabled: false` to grey it out;
+// pressing a grey button emits `vr-action-disabled` instead, so the page can
+// say why it can't be used.
 AFRAME.registerComponent('vr-button', {
     schema: {
         action: { type: 'string' },
@@ -51,12 +53,19 @@ AFRAME.registerComponent('vr-button', {
     },
     paint: function () {
         let color = this.data.color;
-        if (!this.data.enabled) color = '#9A9A9A';
-        else if (this.hovered) color = '#FFFFFF';
-        this.el.setAttribute('material', { color: color, opacity: this.data.enabled ? 1 : 0.5, transparent: !this.data.enabled });
+        if (!this.data.enabled) color = '#7A7A7A';
+        else if (this.hovered) color = '#FFA500'; // orange while pointed at; the trigger presses it
+        this.el.setAttribute('material', { color: color, opacity: this.data.enabled ? 1 : 0.7, transparent: !this.data.enabled });
     },
     press: function () {
-        if (!this.data.enabled) return;
+        if (!this.data.enabled) {
+            // A greyed-out button says why it can't be used (see vr.js), instead of doing nothing.
+            const now = Date.now();
+            if (now - this.lastPress < this.data.cooldown) return;
+            this.lastPress = now;
+            this.el.sceneEl.emit('vr-action-disabled', { action: this.data.action });
+            return;
+        }
         const now = Date.now();
         if (now - this.lastPress < this.data.cooldown) return; // one action per press
         this.lastPress = now;

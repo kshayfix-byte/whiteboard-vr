@@ -24,8 +24,7 @@ AFRAME.registerComponent('color-picker', {
         this.el.setAttribute('material', {
             color: this.data.color
         })
-        // Touch it with the pointer (within 20 cm), or point and pull the
-        // trigger from further away (see vr/reach.js).
+        // Point at it and pull the trigger (see vr/reach.js).
         this.touch = watchTouch(this.el, (controller) => {
             controller.setAttribute('line', {
                 color: this.data.color
@@ -42,7 +41,9 @@ AFRAME.registerComponent('color-picker', {
         useMarker(this.data.color);
     },
     onMouseUp: function(evt) {
-        var array = this.getMousePosition( this.renderer.domElement, evt.clientX || evt.touches[0].clientX, evt.clientY || evt.touches[0].clientY );
+        // Controllers also send mouseup events (with no position); only real mouse clicks count here.
+        if (evt.clientX == null && !(evt.touches && evt.touches[0])) return;
+        var array = this.getMousePosition( this.renderer.domElement, evt.clientX != null ? evt.clientX : evt.touches[0].clientX, evt.clientY != null ? evt.clientY : evt.touches[0].clientY );
         this.onClickPosition.fromArray( array );
 
         var intersects = this.getIntersects( this.onClickPosition, [this.el.getObject3D('mesh')] );

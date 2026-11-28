@@ -25,6 +25,7 @@ Out of scope for now: **item 4, text labels and the in-VR keyboard**. It is defe
    - [M. Tool panel](#m-tool-panel-pr-7)
    - [N. 360° boards](#n-360-boards-pr-8)
    - [O. Highlighter and Erase highlights](#o-highlighter-and-erase-highlights-pr-9)
+   - [Q. Headset fixes, round 1](#q-headset-fixes-round-1-bugs-v1-to-v13-pr-19)
    - [P. Combined, multi-user and performance checks](#p-combined-multi-user-and-performance-checks)
 5. [Known risks and things to watch](#5-known-risks-and-things-to-watch)
 6. [Bug log](#bug-log)
@@ -110,7 +111,7 @@ Run `npm test`. It needs Node 18 or newer (tested on Node 22) and takes about a 
 |---|---|---|
 | `test/board-store.test.js` | U-01 to U-25 | Room codes, draw validation, highlighter flags, names, sizes, shapes, poses. Adding (max 50) and removing boards (copy kept, last one refused). Save, Rename, Save all rules. Saving and reloading after a restart. Autosave. Resizing around the centre. Old or broken files. Backup, crash detection, restore and discard. |
 | `test/realtime.test.js` | S-01 to S-09 | A real server with Socket.io clients: late joiners get the drawing, strokes only reach the same room, bad messages are ignored, Erase all, Add/Remove board, Save/Rename/Save all, resize (including a stroke drawn at the old size), moving boards, and the `/api` addresses. |
-| `test/client-logic.test.mjs` | C-01 to C-07 | Highlight colour mixing, drawing across the 360° join, export file names, size presets, and the three-click Remove guard. |
+| `test/client-logic.test.mjs` | C-01 to C-10 | Highlight colour mixing, drawing across the 360° join, export file names, size presets, the three-click Remove guard, where the VR tool panel and first board go, and that Reach only limits drawing. |
 
 | ID | Test | Result | Notes |
 |---|---|---|---|
@@ -171,14 +172,14 @@ Run `npm test`. It needs Node 18 or newer (tested on Node 22) and takes about a 
 
 | ID | Platform | Test | Steps | Expected | Result | Notes |
 |---|---|---|---|---|---|---|
-| D-01 | V | Scene loads | Open `/vr.html?room=ABCDE` | Board, tool tray, colour cylinders, +/- boxes, eraser, Erase board and buttons are visible. No errors in the browser console | | |
+| D-01 | V | Scene loads | Open `/vr.html?room=ABCDE` | Board, and below it one tilted tool panel with colour discs, Pen size - / +, Highlighter, Eraser, Erase highlights, Erase board and the buttons. No errors in the browser console | |. Changed by bugs V1-V5: one tilted panel below the board |
 | D-02 | V | Look and walk | Drag with the mouse to look. Use WASD or arrows to walk | Camera turns and moves | | |
 | D-03 | H | Enter VR | Press the VR button and put on the headset | Immersive view with both controllers visible | | |
 | D-04 | H | Draw on the board | Hold the controller tip against the board and pull the trigger | A line is drawn where the tip touches. 2D page shows it too | | |
-| D-05 | H | Pick a colour | Touch a colour cylinder | Pen dot changes colour. Next stroke uses it | | |
-| D-06 | H | Pen size | Touch **+** and **-** | Pen dot grows and shrinks. Strokes match the dot | | |
-| D-07 | H | Eraser | Touch the eraser box, then draw over a line | Line is rubbed out | | |
-| D-08 | H | Erase board | Touch the red **Erase board (x3)** box three times in a row (pull away between touches), each within 3 s | Label counts down ("Touch 2 more") and the status line asks to confirm. Only the third touch erases the selected board, everywhere. Waiting 3 s or selecting another board starts over | | Changed by bug 4 |
+| D-05 | H | Pick a colour | Point at a colour disc and pull the trigger | Pen dot changes colour. Next stroke uses it | |. Changed by bug V7: trigger, not touch |
+| D-06 | H | Pen size | Point at **+** and **-** and pull the trigger | Pen dot grows and shrinks. The label between them shows the size ("Pen size 20"). Strokes match the dot | |. Changed by bugs V7, V12 |
+| D-07 | H | Eraser | Point at the pink **Eraser** box and pull the trigger, then draw over a line | Line is rubbed out | |. Changed by bugs V7, V8 |
+| D-08 | H | Erase board | Point at the red **Erase board (x3)** box and pull the trigger three times, each within 3 s | Label counts down ("Touch 2 more") and the status line asks to confirm. Only the third touch erases the selected board, everywhere. Waiting 3 s or selecting another board starts over | | Changed by bug 4. Changed by bug V7: touches no longer count, only trigger presses |
 | D-09 | H | Text readable | Look at labels and the room label | Text is readable and not blurry | | |
 | D-10 | H | Leave VR | Take off / exit VR | The page returns to the normal desktop view without errors | | |
 
@@ -227,7 +228,7 @@ Run `npm test`. It needs Node 18 or newer (tested on Node 22) and takes about a 
 
 | ID | Platform | Test | Steps | Expected | Result | Notes |
 |---|---|---|---|---|---|---|
-| G-01 | H | Green buttons | Look left of the board | Green **Save**, **Save all**, **Export image**, **Rename** boxes. Save all is grey until allowed | | |
+| G-01 | H | Green buttons | Look at the tool panel | **Save**, **Save all**, **Rename**, **Export image** on the panel. Save all is grey until allowed, and pressing it then says why | |. Changed by bugs V1-V5: buttons are on the new panel; bug V13: pressing grey Save all says which boards need a name |
 | G-02 | H | Save on an unnamed board | Point at **Save** and pull the trigger | A small 2D window opens (`name.html`) with a name field filled with the temporary name | | |
 | G-03 | H | Name it in the window | Type a name (headset keyboard), press Save | Window says saved. The VR name tag updates. 2D page shows the name | | |
 | G-04 | H | Back to VR after the window | Close the window | You're back in VR (or press VR to go back in). Note which one happens on your headset | | |
@@ -307,9 +308,9 @@ Run `npm test`. It needs Node 18 or newer (tested on Node 22) and takes about a 
 | K-07 | H | Drop | Let go of grip | Board stays. Frame goes back to orange | | |
 | K-08 | H | Two hands | Grab with one hand, press and release grip on the other | Nothing happens. The first hand keeps the board | | |
 | K-09 | H | Leave VR while holding | Exit VR mid-grab | Board drops where it is | | |
-| K-10 | H | Auto place | Select a moved board and press **Auto place** | Board goes back to the ring. Button is grey for boards that weren't moved | | |
+| K-10 | H | Auto place | Select a moved board and press **Reset position** | Board goes back to the ring. On a board that wasn't moved, the message says it is already in its own place | |. Changed by bug V11: renamed Reset position, always pressable |
 | K-11 | H | Draw on a moved board | Move a board, then draw on it | Drawing works | | |
-| K-12 | V | Desktop Move board panel | **Move board**: Left, Right, Up, Down, Closer, Farther, both Turns, **Face me**, **Auto place** | Each moves the selected board one step (25 cm / 15°). Status says "Placed by hand" / "Placed automatically" correctly when switching boards | | |
+| K-12 | V | Desktop Move board panel | **Move board**: Left, Right, Up, Down, Closer, Farther, both Turns, **Face me**, **Auto place** | Each moves the selected board one step (25 cm / 15°). Status says "Placed by hand" / "Placed automatically" correctly when switching boards | |. Auto place is now called Reset position (bug V11) |
 | K-13 | V | Others see moves | Move a board in one window | The other window sees it move live and its final place | | |
 | K-14 | S | Place is saved | Move a named board, wait, restart. Move an unsaved board, crash, restore | Place kept both times | | |
 | K-15 | V | Old rooms | Open a room saved before PR #5 | Boards use the automatic layout | | |
@@ -320,7 +321,7 @@ Run `npm test`. It needs Node 18 or newer (tested on Node 22) and takes about a 
 
 | ID | Platform | Test | Steps | Expected | Result | Notes |
 |---|---|---|---|---|---|---|
-| L-01 | H | Default is Teleport | Look under the tray | Label reads "Moving: Teleport" | | |
+| L-01 | H | Default is Teleport | Look at the bottom row of the panel | Label reads "Moving: Teleport" | |. Changed by bugs V1-V5 |
 | L-02 | H | Teleport left / right stick | Push a stick forward, aim, let go | Arc and ring come from that controller. You land on the ring | | |
 | L-03 | H | Can't land | Aim at the sky or very far | Arc turns red. Letting go doesn't move you | | |
 | L-04 | H | Snap turn | Stick left / right | Turns 30° once per push. Holding doesn't keep turning. Your position doesn't shift | | |
@@ -333,10 +334,10 @@ Run `npm test`. It needs Node 18 or newer (tested on Node 22) and takes about a 
 | L-11 | H | Draw from across the room | Point at a far board, pull the trigger | Ring shows where you'll draw. Line is reasonably steady | | |
 | L-12 | H | Close drawing unchanged | Draw up close | Feels the same as before | | |
 | L-13 | H | Only the first hit counts | Put one board in front of another, draw | Only the front board gets ink | | |
-| L-14 | H | Far sweep over tools | Sweep the pointer over colours and the eraser from far | Nothing changes. A trigger press picks one | | |
-| L-15 | H | Far sweep over Erase board | Sweep over Erase board from far, then press trigger 3 times, then touch it 3 times within 20 cm | Sweep keeps the board (and doesn't count as a touch). Three trigger presses erase. Three touches erase | | Changed by bug 4 |
+| L-14 | H | Far sweep over tools | Sweep the pointer over colours and the eraser from far | Nothing changes. A trigger press picks one | |. Changed by bug V7: from any distance, only the trigger picks one |
+| L-15 | H | Far sweep over Erase board | Sweep over Erase board, then pull the trigger 3 times | Sweep keeps the board. Three trigger presses erase | | Changed by bug 4. Changed by bug V7: touching within 20 cm no longer counts |
 | L-16 | H | Buttons from far | Use Save, Next board, etc. from a distance | They work with the trigger | | |
-| L-17 | H | Reach 20 cm | Press **Reach** | "Reach: 20 cm". Drawing only works close up. Press again for Long | | |
+| L-17 | H | Reach 20 cm | Press **Reach** | "Reach: 20 cm". Drawing only works within 20 cm of a board, and no pen dot shows further away. Panel buttons still work from any distance. Press again for Long | |. Changed by bug V9: panel buttons still work from far with 20 cm |
 | L-18 | V | Desktop still works | VR page without headset | Mouse drawing, WASD, buttons all work | | |
 | L-19 | D + H | Others see far strokes | Draw from far in VR | 2D page shows the strokes | | |
 
@@ -352,7 +353,7 @@ Run `npm test`. It needs Node 18 or newer (tested on Node 22) and takes about a 
 | M-06 | H | Follow: never mid-action | Turn away while drawing, pointing at the panel, or holding a board | Panel doesn't move until you stop | | |
 | M-07 | H | Follow: snap turn | One 30° snap turn | Panel doesn't move | | |
 | M-08 | H | Follow: sitting | Sit down, turn away | Panel comes back lower | | |
-| M-09 | H | Panel doesn't block the board | Face the board | You can still draw on the middle of it | | |
+| M-09 | H | Panel doesn't block the board | Face the board | You can still draw on the middle of it | |. Changed by bugs V1-V5: the panel is below the board now |
 | M-10 | H | Wrist: position | Choose Wrist | Small panel above the left hand, readable, facing you. Note any size, offset or tilt changes wanted | | |
 | M-11 | H | Wrist: using it | Use the right controller on the wrist panel (trigger and touch) | Buttons and colours work | | |
 | M-12 | H | Wrist: left hand still works | With the wrist panel, draw, grab and teleport with the left hand | All work | | |
@@ -360,7 +361,7 @@ Run `npm test`. It needs Node 18 or newer (tested on Node 22) and takes about a 
 | M-14 | H | Stay | Choose Stay, move around. Press B or Y | Panel stays put. B/Y brings it in front | | |
 | M-15 | H | Back to start brings panel | In Follow and Stay, press Back to start | Panel comes back too | | |
 | M-16 | H | Leave VR | Exit VR | Panel is back at the start spot for the desktop view | | |
-| M-17 | H | Every button in every mode | In each mode, try colours, size, eraser, highlighter, Erase board, Save, Rename, Save all, Export, Add/Next/Remove board, Size, Auto place, Moving, Reach, Back to start, Add 360 board, Go inside | All work | | |
+| M-17 | H | Every button in every mode | In each mode, try colours, size, eraser, highlighter, Erase board, Save, Rename, Save all, Export, Add/Next/Remove board, Size, Auto place, Moving, Reach, Back to start, Add 360 board, Go inside | All work | |. Auto place is now Reset position (bug V11) |
 | M-18 | H | Lighting | Turn around with the panel following | Board lighting doesn't change | | |
 
 ### N. 360° boards (PR #8)
@@ -372,13 +373,13 @@ Run `npm test`. It needs Node 18 or newer (tested on Node 22) and takes about a 
 | N-03 | D | Draw across the join | Turn so the "behind" line is in the middle, draw across it | Line carries on across the join with no gap or jump | | |
 | N-04 | D | Export | Export a 360° board | 8000 × 1800 PNG without the front/behind tags | | |
 | N-05 | D + V | Sync | Draw and Erase board on a 360° board in 2D, VR page and a second window | All stay in step | | |
-| N-06 | H | Add from VR | Trigger **Add 360 board** (row under the tray) | A grey drum appears behind the start. Message says to press Go inside | | |
+| N-06 | H | Add from VR | Trigger **Add 360 board** on the panel | A grey drum appears behind the start. Message says to press Go inside | |. Changed by bugs V1-V5 |
 | N-07 | H | Go inside / Step out | Select the drum, press **Go inside**. Press again, or Back to start | You're in the middle facing the front. Label says "Step out". Pressing again or Back to start takes you out. Go inside is grey unless a 360° board is selected | | |
 | N-08 | H | Draw all round | Draw all the way round, including behind you across the join | Ink appears everywhere. Pen dot shows on the wall | | |
 | N-09 | H | Not from outside | Point at the drum from outside | No pen dot and no drawing | | |
 | N-10 | H | Selected and name tag | Select the 360° board | Rims turn orange. Name tag readable inside and outside ("360: …") | | |
-| N-11 | H | Fixed size | Press Board size on a 360° board | Message says it has a fixed size | | |
-| N-12 | H | Can't grab | Grip on a 360° board | Message says it can't be grabbed. Desktop Move board panel still moves it. Auto place puts it back | | |
+| N-11 | H | Fixed size | Press Board size on a 360° board | Board size label reads "Size: fixed (360)" and the button is grey. Pressing it says 360 boards have a fixed size | |. Changed by bug V10 |
+| N-12 | H | Can't grab | Grip on a 360° board | Message says it can't be grabbed. Desktop Move board panel still moves it. Auto place puts it back | |. Auto place is now Reset position (bug V11) |
 | N-13 | H | Export from VR | Export a 360° board in VR | Panorama PNG downloads | | |
 | N-14 | D + S | Save and restore | Save, Rename, autosave, Save all, restore unsaved and Remove (×3) on a 360° board. Restart | All work. It reloads as a 360° board | | |
 | N-15 | V | Several 360° boards | Add 3 | They line up one behind another. Flat boards keep their layout | | |
@@ -400,11 +401,37 @@ Run `npm test`. It needs Node 18 or newer (tested on Node 22) and takes about a 
 | O-10 | D + H | Export | Export in 2D and VR | Highlights see-through in the PNG, writing on top | | |
 | O-11 | D + H | 360° join | Highlight and highlight-erase across the join (Turn ×4 in 2D, behind you in VR) | Even on both sides | | |
 | O-12 | D | Resize | Resize a highlighted board | Highlights move with everything else | | |
-| O-13 | H | Pick up the highlighter | Touch the see-through **Highlighter** box, touch again | Picks it up, then cycles colours. Pen dot shows the colour | | |
-| O-14 | H | Eraser box toggles | Touch the **Eraser** box twice | Pink box "Eraser" → yellow box "Erase highlights" → back | | |
-| O-15 | H | Colour cylinder | While highlighting, touch a colour cylinder | Back to marker with its old size | | |
+| O-13 | H | Pick up the highlighter | Point at the see-through **Highlighter** box and pull the trigger, then again | Picks it up, then cycles colours. Pen dot shows the colour | |. Changed by bug V7: trigger, not touch |
+| O-14 | H | Eraser box toggles | Pull the trigger on **Eraser**, draw. Then on **Erase highlights**, draw. Then on **Eraser** again | Pink **Eraser** rubs out writing and highlights. Yellow **Erase highlights** rubs out highlights only. Pressing either again keeps that eraser. The box in use is a bit bigger | |. Changed by bug V8: two boxes instead of one that toggled |
+| O-15 | H | Colour cylinder | While highlighting, pull the trigger on a colour disc | Back to marker with its old size | |. Changed by bug V7: trigger, not touch |
 | O-16 | H | +/- | Press +/- with marker, then highlighter | Only the pen in use changes | | |
 | O-17 | H | Boxes reachable | In Follow, Wrist and Stay panel modes | Highlighter and Eraser boxes can be reached | | |
+
+### Q. Headset fixes, round 1 (bugs V1 to V13, PR #19)
+
+The VR tool panel was rebuilt as one tilted plate below the board, with a grab handle. Run these in a headset unless marked V. Use a new room.
+
+| ID | Platform | Test | Steps | Expected | Result | Notes |
+|---|---|---|---|---|---|---|
+| Q-01 | H | Panel at first load (V1) | Enter VR in Follow | The panel is in front of you below eye level, leaning back like a lectern. The board is beyond it and above it. No button is hidden by the board. Note if you'd like it nearer, further, higher or lower | | |
+| Q-02 | H | Big board (V1, V2) | Set the first board to Wall (4 × 2 m), then Tall. Try Stay and Follow | Every panel button stays visible and reachable. The board doesn't cover the panel | | |
+| Q-03 | H | Back to Follow / Stay (V3) | Panel: Wrist, then press Panel until Stay, then Follow. Also press B or Y | Each time it comes back at a comfortable distance and height in front of you, not too close or low | | |
+| Q-04 | H | Buttons don't overlap (V4) | Look at Highlighter and Next board | Separate boxes, each with its own label. Next board works | | |
+| Q-05 | H | Messages readable (V5) | Press Reach, Pen size +, Next board | Each message shows in the top strip of the panel, not behind anything | | |
+| Q-06 | H | Grab the panel (V6) | Point at the dark "Grip here" handle (or anywhere on the plate) and hold the grip. Move your hand, then let go | The panel moves with your hand and keeps facing you. On letting go it stays there and the label says "Panel: Stay". No whiteboard moves | | |
+| Q-07 | H | Grab from the wrist (V6) | Panel: Wrist, then grip the wrist panel with the right controller | It comes off the wrist at full size and can be placed. Then "Panel: Stay" | | |
+| Q-08 | H | Thumbstick while holding the panel (V6) | Hold the panel with the grip and push that thumbstick | You don't teleport or turn while the grip holds the panel | | |
+| Q-09 | H | No hover clicks (V7) | In Wrist and in Follow, sweep the pointer slowly over every colour, Eraser, Erase highlights, Highlighter, Erase board and every button, without pulling the trigger. Also rest the controller tip on them | Nothing changes. Buttons turn orange while pointed at | | |
+| Q-10 | H | Trigger clicks (V7) | Pull the trigger on each of the above | Each works once per pull | | |
+| Q-11 | H | Eraser not stuck (V8) | Draw and highlight. **Erase highlights** over both, then **Eraser** over both, then a colour | Erase highlights removes only the highlight. Eraser then removes writing too. The colour goes back to the marker | | |
+| Q-12 | H | Reach only limits drawing (V9) | Reach: 20 cm. Use panel buttons from where you stand. Point at a board 1 m away and pull the trigger. Walk up and draw within 20 cm | Buttons all work. The far board isn't drawn on and shows no pen dot. Close up it draws | | |
+| Q-13 | H + V | 360 board size (V10) | Select a 360 board, look at the Size button, press it | Label "Size: fixed (360)", button grey. Pressing says the fixed size. Desktop size menu is greyed out too | | |
+| Q-14 | H + V | Reset position (V11) | Press **Reset position** on a board that wasn't moved. Then grip-move a board and press it | First: message says it hasn't been moved. Second: the board goes back to its own place | | |
+| Q-15 | H | Pen size (V12) | Press - and + with the marker, then the highlighter | The label between them shows "Pen size N" and a message says Marker / Highlighter size. Pen dot changes | | |
+| Q-16 | H + V | Grey buttons explain themselves (V13) | With one board, press grey Next board, Remove board, Go inside. With two unsaved boards, press Save all | Each gives a short reason. Save all lists the boards that still need a name | | |
+| Q-17 | D + V | Save all label (V13) | Room with two boards, one never saved | The grey button reads "Save all (1 unnamed)". Its tooltip names the board. After saving it, it reads "Save all" and works | | |
+| Q-18 | V | Desktop VR page | Open the VR page without a headset | The panel is visible below the board. Clicking its buttons with the mouse works and doesn't draw on the board behind it | | |
+| Q-19 | H | Drawing past the panel | Draw on the lower part of the first board | You can reach the whole board. Point through the panel and nothing is drawn behind it | | |
 
 ### P. Combined, multi-user and performance checks
 
@@ -463,4 +490,17 @@ Copy a row for each problem. Put the bug number in the test's Notes column.
 | 11 | F-15 | D, Safari | The rename box from ✎ is extremely narrow, so only part of one character shows while typing | The box is wide enough to see the name | Press ✎ on a row and type | Minor | Resolved (retest passed 2026-11-27): the name area now fills the row and the box is at least 16 characters wide. Retest with F-15 |
 | 12 | F-14 (layout) | D, M | The restore dialog's buttons sit to the right with empty space on the left, and Restore all wraps onto a line of its own | Buttons spread evenly across the dialog | Open the restore dialog | Minor | Resolved (retest passed 2026-11-27): the buttons stretch to share the full width; on a desktop they sit on one row, on a phone they wrap into even rows. Retest with F-18 |
 | 13 | Setup (headset) | D, V | Opening `https://<IP>:3000` gives ERR_SSL_PROTOCOL_ERROR | The https page loads | Start with `npm start`, open the https address | Major | Fixed, awaiting retest: `npm start` now serves http on 3000 and, after `npm run cert`, https on 3443; the start-up message prints both addresses. Retest: open `https://<IP>:3443` |
-| 14 | | | | | | | |
+| 14 | Headset notes (V1) | H | Default panel layout too tight on first load; options partly hidden by the board | Every option visible | Enter VR | Major | Fixed, awaiting retest: the panel is now one tilted plate below the board, not a frame around it; the first board moved to 1.5 m away. Retest with Q-01 |
+| 15 | Headset notes (V2) | H | In Stay mode the panel doesn't grow when the board is resized | The board never covers the panel | Resize the board in Stay | Major | Fixed, awaiting retest: the panel no longer goes around the board, so a bigger board can't cover it. Retest with Q-02 |
+| 16 | Headset notes (V3) | H | Switching back to Stay/Follow puts the panel too close and too low | Comfortable distance and height | Wrist, then Stay or Follow | Major | Fixed, awaiting retest: it comes back 55 cm ahead and 55 cm below your eyes, facing you; Stay also starts in front of you on entering VR. Retest with Q-03 |
+| 17 | Headset notes (V4) | H | Highlighter box covers Next board | Separate buttons | Look at the right column | Major | Fixed, awaiting retest: new grid layout. Retest with Q-04 |
+| 18 | Headset notes (V5) | H | Reach message hidden behind the colour chooser | Messages readable | Press Reach | Minor | Fixed, awaiting retest: messages show in the panel's top strip. Retest with Q-05 |
+| 19 | Headset notes (V6) | H | No way to grab and move the panel | A handle to move it | | Feature | Fixed, awaiting retest: grip the "Grip here" handle or the plate; letting go leaves it there (Panel: Stay). Retest with Q-06 to Q-08 |
+| 20 | Headset notes (V7) | H | Some controls fire on hover, not click (colours, Erase board), maybe only in Wrist | Only a trigger press activates | Sweep over the colours | Major | Fixed, awaiting retest: controls used to fire when the pointer touched them within 20 cm, which on the wrist happens all the time. Now only the trigger counts. Retest with Q-09, Q-10 |
+| 21 | Headset notes (V8) | H | Erase gets stuck in erase-highlights mode | Normal erasing always possible | Press Eraser twice | Major | Fixed, awaiting retest: the one box that toggled is now two boxes, **Eraser** and **Erase highlights**. Retest with Q-11, O-14 |
+| 22 | Headset notes (V9) | H | Reach distance also limits reaching the panel | Reach only limits drawing | Reach: 20 cm, use a button | Major | Fixed, awaiting retest: the pointer always reaches 12 m; Reach only decides how close a board must be to draw. Retest with Q-12, L-17 |
+| 23 | Headset notes (V10) | H | Resize does nothing on 360° boards | Clear feedback | Select a 360 board, press Size | Minor | Fixed, awaiting retest: 360 boards have a fixed size by design; the button now says "Size: fixed (360)", is grey, and explains when pressed (the explanation was hidden by bug 18). Resizable 360 boards would be a new feature. Retest with Q-13 |
+| 24 | Headset notes (V11) | H | Auto Place purpose unclear, seems to do nothing | Clear purpose | Press Auto place | Minor | Fixed, awaiting retest: it puts a board you moved back in its automatic place, and did nothing (grey) for boards never moved. Renamed **Reset position**, always pressable, says what it did. Retest with Q-14, K-10 |
+| 25 | Headset notes (V12) | H | Round +/- buttons have no visible effect | Clear purpose | Press + / - | Minor | Fixed, awaiting retest: they change the pen size (5 to 50 px). They now have a "Pen size N" label and a message. Retest with Q-15, D-06 |
+| 26 | V (screenshot) | V, H | Save all is greyed out with several boards in the room | Clear reason | Two boards, one with a temporary name | Minor | Fixed, awaiting retest: working as designed (Save all waits until every board has been named with its own Save), but it didn't say so. The button now reads "Save all (N unnamed)", its tooltip names them, and in VR pressing it explains. Retest with Q-16, Q-17 |
+| 27 | | | | | | | |

@@ -3,10 +3,11 @@
 // Boards can have different sizes (1000 canvas pixels = 1 metre), so the
 // layout looks at every board's size:
 //
-// - The first board stays where the original single board was: in front of
-//   the user, behind the tool tray and button columns. A board wider than
-//   the tray moves back a little so the buttons stay in front of it, and a
-//   tall board grows upwards so it doesn't go below the tray.
+// - The first board goes straight in front of the user, FIRST_Z away and
+//   with its lower edge at FIRST_BOTTOM, so it shows above the tool panel
+//   (which sits lower and nearer, see tool-panel.js). A tall board grows
+//   upwards. (It used to sit 70 cm away inside the old frame-shaped panel,
+//   whose buttons a bigger board covered: bugs V1 and V2.)
 // - Extra boards go on a ring around the user, taking turns on the left and
 //   the right, each one placed next to the last on that side. How much of
 //   the ring a board takes depends on its width. When a board doesn't fit,
@@ -26,15 +27,13 @@
 // middle of the cylinder, and rotationY turns the wall (the middle of the
 // canvas faces the cylinder's local -z, i.e. towards the start at rotation 0).
 
-import { PX_PER_METRE, DEFAULT_WIDTH, DEFAULT_HEIGHT, isWrapBoard } from '../board-client';
+import { PX_PER_METRE, DEFAULT_WIDTH, DEFAULT_HEIGHT, isWrapBoard } from '../board-client.js';
 
 export const CENTER = { x: 0, z: 0.1 };   // where the user stands
 export const BOARD_HEIGHT = 1.4;          // centre of a standard board above the floor
 
-const FIRST_Z = -0.6;                     // the original board's distance
-const FIRST_Z_WIDE = -0.7;                // behind the buttons, for boards wider than the tray
-const TRAY_WIDTH = 1.7;
-const FIRST_BOTTOM = 0.9;                 // lowest edge of the first board (just above the tray)
+export const FIRST_Z = -1.4;              // the first board's distance (1.5 m in front of the start)
+export const FIRST_BOTTOM = 1.0;          // lowest edge of the first board (above the tool panel)
 const RING_BOTTOM = 0.4;                  // lowest edge of boards on the ring
 const RING_RADIUS = 1.7;
 const RING_STEP = 1.3;
@@ -121,7 +120,7 @@ function layoutFlat(boards) {
 
     // First board.
     const first = boardMetres(boards[0].width, boards[0].height);
-    const firstZ = first.w > TRAY_WIDTH - 0.1 ? FIRST_Z_WIDE : FIRST_Z;
+    const firstZ = FIRST_Z;
     result.push(hasPose(boards[0].pose)
         ? { position: boards[0].pose.position.slice(), rotationY: Number(boards[0].pose.rotationY) || 0 }
         : { position: [0, centreY(first.h, FIRST_BOTTOM), firstZ], rotationY: 0 });

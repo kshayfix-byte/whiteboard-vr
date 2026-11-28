@@ -9,10 +9,15 @@
 // then the board behind it, then another board further back). Only the
 // nearest one counts; use nearestHit() before acting on a hit.
 //
-// Things that used to react to a mere touch (colour cylinders, eraser,
-// Erase board) still do when the pointer touches them from within NEAR_REACH.
-// From further away they need a trigger press, so sweeping the pointer across
-// the tray can't change your colour or wipe a board by accident.
+// The Reach setting only limits drawing (and erasing) on whiteboards. The
+// pointer itself always reaches LONG_REACH, so the tool panel's buttons work
+// the same with either setting (bug V9).
+//
+// Every panel control (colours, eraser, highlighter, Erase board, buttons)
+// needs a trigger press while the pointer is on it. They used to fire when
+// the pointer merely touched them from within 20 cm, which made them go off
+// by themselves when the panel is on the wrist, right next to the other hand
+// (bug V7).
 
 export const NEAR_REACH = 0.2;   // metres; the original marker length
 export const LONG_REACH = 12;    // metres
@@ -41,8 +46,14 @@ export function reachMetres() {
 export function setReachMode(next) {
     mode = next === 'short' ? 'short' : 'long';
     try { window.localStorage.setItem(STORE_KEY, mode); } catch (e) { /* private mode */ }
-    document.querySelectorAll('.controller').forEach((c) => c.setAttribute('raycaster', 'far', reachMetres()));
+    // The pointer always reaches the panel; only drawing is limited (canDrawAt).
+    document.querySelectorAll('.controller').forEach((c) => c.setAttribute('raycaster', 'far', LONG_REACH));
     listeners.forEach((fn) => fn(mode));
+}
+
+// Can the pen draw on a board this far (metres) from the controller?
+export function canDrawAt(distance) {
+    return distance <= reachMetres();
 }
 
 export function onReachChange(fn) {
@@ -62,19 +73,19 @@ export function nearestHit(raycasterEl, el) {
     return e === el ? first : null;
 }
 
-// For things that react when the pointer touches them (colour cylinders,
-// eraser, Erase board). Calls activate(controllerEl) once per touch when the
-// pointer touches `el` from within NEAR_REACH, or when the trigger is pulled
-// while `el` is the nearest thing the pointer hits. Call tick() every frame.
+// For panel controls (colour cylinders, eraser, highlighter, Erase board).
+// Calls activate(controllerEl) when the trigger is pulled while `el` is the
+// nearest thing that controller's pointer hits. A pointer just passing over
+// or touching `el` does nothing. tick() is kept so callers don't change; it
+// does nothing now.
 export function watchTouch(el, activate) {
-    const state = { pointers: [], touched: false };
+    const state = { pointers: [] };
 
     el.addEventListener('raycaster-intersected', (evt) => {
         if (state.pointers.indexOf(evt.detail.el) === -1) state.pointers.push(evt.detail.el);
     });
     el.addEventListener('raycaster-intersected-cleared', (evt) => {
         state.pointers = state.pointers.filter((p) => p !== evt.detail.el);
-        if (!state.pointers.length) state.touched = false;
     });
     document.querySelectorAll('.controller').forEach((controller) => {
         controller.addEventListener('triggerdown', () => {
@@ -84,18 +95,6 @@ export function watchTouch(el, activate) {
 
     return {
         pointer: () => state.pointers[0] || null,
-        tick: () => {
-            if (!state.pointers.length) return;
-            const near = state.pointers.find((p) => {
-                const hit = nearestHit(p, el);
-                return hit && hit.distance <= NEAR_REACH;
-            });
-            if (near && !state.touched) {
-                state.touched = true;
-                activate(near);
-            } else if (!near) {
-                state.touched = false;
-            }
-        }
+        tick: () => {}
     };
 }

@@ -432,13 +432,16 @@ window.addEventListener('DOMContentLoaded', () => {
     // ---- Board size: the VR button steps through the ready-made sizes ----
     const sizeLabel = document.getElementById('vr-size-label');
     const sizeSelect = document.getElementById('vr-board-size');
+    const sizeBox = document.getElementById('vr-size-box');
 
     function updateSizeLabel() {
         const entry = boardEls[selectedBoard()];
         if (!entry) return;
         if (entry.shape === 'cylinder') {
             const wrapText = describeWrapSize(entry.width, entry.height);
-            if (sizeLabel) sizeLabel.setAttribute('value', '360: ' + wrapText.replace('\u00d7', 'x'));
+            // 360 boards have a fixed size (bug V10): say so on the button and grey it out.
+            if (sizeLabel) sizeLabel.setAttribute('value', 'Size: fixed (360)');
+            if (sizeBox) sizeBox.setAttribute('vr-button', 'enabled', false);
             if (sizeSelect) {
                 sizeSelect.value = 'custom';
                 sizeSelect.disabled = true;
@@ -449,6 +452,7 @@ window.addEventListener('DOMContentLoaded', () => {
             return;
         }
         if (sizeSelect) sizeSelect.disabled = false;
+        if (sizeBox) sizeBox.setAttribute('vr-button', 'enabled', true);
         updateInsideButton();
         const preset = presetFor(entry.width, entry.height);
         const text = describeSize(entry.width, entry.height);
@@ -517,6 +521,7 @@ window.addEventListener('DOMContentLoaded', () => {
         placeBoards();
     }
 
+    let toolPanel = null;   // set further down; the grip and thumbsticks ask it first
     mover = createBoardMover({
         scene: scene,
         socket: socket,
@@ -527,6 +532,7 @@ window.addEventListener('DOMContentLoaded', () => {
         selected: selectedBoard,
         select: selectBoard,
         canGrab: (id) => !(boardEls[id] && boardEls[id].shape === 'cylinder'),
+        skipGrab: (controller) => !!(toolPanel && toolPanel.wantsGrip(controller)),
         onLocalPose: (id, pose) => {
             setLocalPose(id, pose);
             updateMoveState();
@@ -560,10 +566,25 @@ window.addEventListener('DOMContentLoaded', () => {
         if (moveState) moveState.textContent = moved ? 'Placed by hand' : 'Placed automatically';
         const autoButton = document.getElementById('vr-auto-place');
         if (autoButton) autoButton.disabled = !moved;
-        if (autoPlaceBox) autoPlaceBox.setAttribute('vr-button', 'enabled', moved);
+        // The VR button stays pressable, so pressing it can explain itself (bug V11).
+        if (autoPlaceBox) autoPlaceBox.setAttribute('vr-button', 'enabled', true);
     }
     onSelect(updateMoveState);
     socket.on('roomInfo', updateMoveState);
+
+    // "Reset position" (was "Auto place", bug V11): a board you moved goes
+    // back to where the automatic layout puts it.
+    function resetPosition() {
+        const id = selectedBoard();
+        const info = roomBoards.find((b) => b.id === id);
+        if (!info) return;
+        if (!info.pose) {
+            showInScene('\u201c' + shortName(info.name) + '\u201d hasn\u2019t been moved, so it is already in its own place. ' +
+                'Reset position puts a board you moved (grip, or Move board) back there.');
+            return;
+        }
+        if (mover.autoPlace(id)) showInScene('\u201c' + shortName(info.name) + '\u201d is back in its own place.');
+    }
 
     if (moveToggle && movePanel) {
         moveToggle.addEventListener('click', () => {
@@ -575,7 +596,7 @@ window.addEventListener('DOMContentLoaded', () => {
         movePanel.querySelectorAll('button[data-move]').forEach((button) => {
             button.addEventListener('click', () => mover.nudge(button.getAttribute('data-move')));
         });
-        document.getElementById('vr-auto-place').addEventListener('click', () => mover.autoPlace());
+        document.getElementById('vr-auto-place').addEventListener('click', resetPosition);
     }
 
     // ---- Moving yourself around, and how far the pointer reaches ----
@@ -583,7 +604,7 @@ window.addEventListener('DOMContentLoaded', () => {
         scene: scene,
         rig: document.getElementById('rig'),
         camera: document.getElementById('camera'),
-        busy: (controller) => mover.holds(controller),
+        busy: (controller) => mover.holds(controller) || !!(toolPanel && toolPanel.holds(controller)),
         status: showInScene
     });
     const movingLabel = document.getElementById('vr-moving-label');
@@ -598,14 +619,28 @@ window.addEventListener('DOMContentLoaded', () => {
     onReachChange((mode) => {
         paintReach();
         showInScene(mode === 'short'
-            ? 'Short reach: the marker only reaches 20 cm, like a real pen.'
+            ? 'Reach 20 cm: you only draw on a board within 20 cm, like a real pen. The panel buttons still work from any distance.'
             : 'Long reach: point at any board across the room and pull the trigger to draw.');
     });
     paintMoving();
     paintReach();
 
+    // Pen size: the - and + buttons next to it change it (bug V12).
+    const penSizeLabel = document.getElementById('vr-pen-size-label');
+    let lastPen = { size: tools.size, highlight: tools.highlight };
+    function paintPenSize() {
+        if (penSizeLabel) penSizeLabel.setAttribute('value', 'Pen size ' + tools.size);
+        // Only for - and +, not when picking up the other pen (which has its own size).
+        if (tools.size !== lastPen.size && tools.highlight === lastPen.highlight) {
+            showInScene((tools.highlight ? 'Highlighter' : 'Marker') + ' size ' + tools.size + ' px (5 to 50). The pen dot on the board shows the size.');
+        }
+        lastPen = { size: tools.size, highlight: tools.highlight };
+    }
+    onToolChange(paintPenSize);
+    paintPenSize();
+
     // ---- Where the tool panel sits: follows you, on your wrist, or stays ----
-    const toolPanel = createToolPanel({
+    toolPanel = createToolPanel({
         scene: scene,
         panel: document.getElementById('tool-panel'),
         camera: document.getElementById('camera'),
@@ -784,7 +819,7 @@ window.addEventListener('DOMContentLoaded', () => {
         } else if (action === 'next-board') {
             nextBoard();
         } else if (action === 'auto-place') {
-            mover.autoPlace();
+            resetPosition();
         } else if (action === 'board-size') {
             nextSize();
         } else if (action === 'moving-mode') {
@@ -803,6 +838,25 @@ window.addEventListener('DOMContentLoaded', () => {
             toolPanel.nextMode();
         } else if (action === 'erase-all') {
             if (selectedBoard()) eraseGuard.press(selectedBoard());
+        }
+    });
+
+    // A grey VR button was pressed: say why it can't be used now.
+    scene.addEventListener('vr-action-disabled', (evt) => {
+        const action = evt.detail.action;
+        if (action === 'save-all') {
+            showInScene(controls.saveAllReason());
+        } else if (action === 'next-board') {
+            showInScene('There is only one whiteboard in this room. Add whiteboard makes another.');
+        } else if (action === 'remove-board') {
+            showInScene('The last whiteboard in a room can\u2019t be removed.');
+        } else if (action === 'go-inside') {
+            showInScene('Select a 360 board first (point at it, or use Next board). Add 360 board makes one.');
+        } else if (action === 'board-size') {
+            const entry = boardEls[selectedBoard()];
+            showInScene(entry && entry.shape === 'cylinder'
+                ? '360 boards have a fixed size (' + describeWrapSize(entry.width, entry.height).replace('\u00d7', 'x') + ').'
+                : 'This board\u2019s size can\u2019t be changed right now.');
         }
     });
 

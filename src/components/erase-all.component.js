@@ -1,8 +1,6 @@
-// The red "Erase board" box. As in the original, touching it with the laser
-// erases a board; with several boards it erases the selected one (vr.js
-// handles the `erase-all` action). With the long pointer, a touch only counts
-// from within 20 cm; from further away it needs a trigger press, so sweeping
-// the pointer past it can't wipe a board (see vr/reach.js).
+// The red "Erase board" box. Point at it and pull the trigger (three times
+// in a row, see vr.js) to erase the selected board. A pointer passing over
+// it does nothing (see vr/reach.js).
 import { watchTouch } from '../vr/reach';
 
 AFRAME.registerComponent('erase-all', {
