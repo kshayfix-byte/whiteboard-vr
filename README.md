@@ -4,8 +4,6 @@
 
 A web-bassed online whiteboard which is platform independent. Use VR, Desktop or Mobile. Share your ideas or educate your students.
 
-![Preview](media/demo.gif)
-
 ## Demo
 
 Video: [https://www.youtube.com/watch?v=YjOsA-EFc9I&feature=youtu.be](https://www.youtube.com/watch?v=YjOsA-EFc9I&feature=youtu.be)
@@ -20,10 +18,11 @@ Try it yourself: [https://whiteboard-vr.herokuapp.com](https://whiteboard-vr.her
 4. Build project `npm run build`
 5. Start Webserver (with socket.io) `npm run start`. It serves `http://<your IP>:3000`. For VR headsets, run `npm run cert` once first: the server then also serves `https://<your IP>:3443` (accept the self-signed certificate warning once). Browsers only allow VR on https pages.
 
-## Testing
+## Running on Steam Frame
 
-- `npm test` runs the automated checks for the server and board logic (Node 18 or newer).
-- [docs/TEST_PLAN.md](docs/TEST_PLAN.md) is the full manual test plan for 2D, mobile and headsets, including how to run the app over HTTPS for a headset.
+VR mode on the Steam Frame needs a browser with WebXR support. To enable WebXR on the Steam Frame you need **SteamOS 0.5.7 or newer** (currently Beta) together with **Chromium 157 or newer**. With older versions the VR page only opens a fullscreen 3D view and can't enter VR.
+
+Open the app on the headset at `https://<your IP>:3443` (run `npm run cert` once first, see step 5 above). Plain `http://` pages are not allowed to start VR.
 
 ## Saving, naming and export
 
