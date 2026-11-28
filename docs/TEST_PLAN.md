@@ -230,13 +230,13 @@ Run `npm test`. It needs Node 18 or newer (tested on Node 22) and takes about a 
 | ID | Platform | Test | Steps | Expected | Result | Notes |
 |---|---|---|---|---|---|---|
 | G-01 | H | Green buttons | Look at the tool panel | **Save**, **Save all**, **Rename**, **Export image** on the panel. Save all is grey until allowed, and pressing it then says why | Pass | . Changed by bugs V1-V5: buttons are on the new panel; bug V13: pressing grey Save all says which boards need a name. Pass by Q-04, Q-16 (2026-11-28) |
-| G-02 | H | Save on an unnamed board | Point at **Save** and pull the trigger | A small 2D window opens (`name.html`) with a name field filled with the temporary name | | |
-| G-03 | H | Name it in the window | Type a name (headset keyboard), press Save | Window says saved. The VR name tag updates. 2D page shows the name | | |
-| G-04 | H | Back to VR after the window | Close the window | You're back in VR (or press VR to go back in). Note which one happens on your headset | | |
-| G-05 | H | Fallback if no window | If the browser blocks the window | Page leaves VR and shows the normal name box. Pressing VR goes back in | | |
-| G-06 | H | Rename from VR | Trigger on **Rename** | Same window opens for renaming | | |
-| G-07 | H | Export from VR | Trigger on **Export image** | PNG downloads (check the headset's downloads) | | |
-| G-08 | H | Acts on the selected board | With 2+ boards, select the second and use Save, Rename and Export | They act on the selected board, not the first one | | |
+| G-02 | H | Save on an unnamed board | Point at **Save** and pull the trigger | A small 2D window opens (`name.html`) with a name field filled with the temporary name | Pass | Pass (2026-11-28) |
+| G-03 | H | Name it in the window | Type a name (headset keyboard), press Save | Window says saved. The VR name tag updates. 2D page shows the name | Pass | Pass (2026-11-28) |
+| G-04 | H | Back to VR after the window | Close the window | You're back in VR (or press VR to go back in). Note which one happens on your headset | Pass | Pass (2026-11-28) |
+| G-05 | H | Fallback if no window | If the browser blocks the window | Page leaves VR and shows the normal name box. Pressing VR goes back in | Pass | Pass (2026-11-28) |
+| G-06 | H | Rename from VR | Trigger on **Rename** | Same window opens for renaming | Pass | Pass (2026-11-28) |
+| G-07 | H | Export from VR | Trigger on **Export image** | PNG downloads (check the headset's downloads) | Pass | Pass (2026-11-28) |
+| G-08 | H | Acts on the selected board | With 2+ boards, select the second and use Save, Rename and Export | They act on the selected board, not the first one | Pass | Pass (2026-11-28) |
 
 ### H. Multiple whiteboards (PR #2 / #3)
 
