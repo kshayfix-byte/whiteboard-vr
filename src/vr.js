@@ -237,8 +237,10 @@ window.addEventListener('DOMContentLoaded', () => {
     const saveAllButton = document.getElementById('vr-save-all-box');
     let sceneTimer = null;
 
-    function showInScene(text) {
+    // isError: show it in red, so it stands out as something that can't be done.
+    function showInScene(text, isError) {
         if (!sceneStatus) return;
+        sceneStatus.setAttribute('color', isError ? '#C0392B' : '#222');
         sceneStatus.setAttribute('value', text);
         clearTimeout(sceneTimer);
         sceneTimer = setTimeout(() => sceneStatus.setAttribute('value', ''), 5000);
@@ -723,7 +725,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
     // Mirror on-screen status messages into the scene so they're visible in a headset.
     if (statusEl && window.MutationObserver) {
-        new MutationObserver(() => { if (statusEl.textContent) showInScene(statusEl.textContent); })
+        new MutationObserver(() => { if (statusEl.textContent) showInScene(statusEl.textContent, statusEl.classList.contains('error')); })
             .observe(statusEl, { childList: true, characterData: true, subtree: true });
     }
 
@@ -850,18 +852,18 @@ window.addEventListener('DOMContentLoaded', () => {
     scene.addEventListener('vr-action-disabled', (evt) => {
         const action = evt.detail.action;
         if (action === 'save-all') {
-            showInScene(controls.saveAllReason());
+            showInScene(controls.saveAllReason(), true);
         } else if (action === 'next-board') {
-            showInScene('There is only one whiteboard in this room. Add whiteboard makes another.');
+            showInScene('There is only one whiteboard in this room. Add whiteboard makes another.', true);
         } else if (action === 'remove-board') {
-            showInScene('The last whiteboard in a room can\u2019t be removed.');
+            showInScene('The last whiteboard in a room can\u2019t be removed.', true);
         } else if (action === 'go-inside') {
-            showInScene('Select a 360 board first (point at it, or use Next board). Add 360 board makes one.');
+            showInScene('Select a 360 board first (point at it, or use Next board). Add 360 board makes one.', true);
         } else if (action === 'board-size') {
             const entry = boardEls[selectedBoard()];
             showInScene(entry && entry.shape === 'cylinder'
                 ? '360 boards have a fixed size (' + describeWrapSize(entry.width, entry.height).replace('\u00d7', 'x') + ').'
-                : 'This board\u2019s size can\u2019t be changed right now.');
+                : 'This board\u2019s size can\u2019t be changed right now.', true);
         }
     });
 
