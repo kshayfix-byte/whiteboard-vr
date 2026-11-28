@@ -132,7 +132,7 @@ Run `npm test`. It needs Node 18 or newer (tested on Node 22) and takes about a 
 | A-03 | D | Room code shown | Look at the toolbar | "Room: XXXXX" matches the address | Pass | |
 | A-04 | D | Join other room | Click **Join other room**, type `abcde`, OK | Page opens room `ABCDE` (upper case) | Pass | |
 | A-05 | D | Join cancelled | Click **Join other room**, press Cancel (and try empty) | Nothing changes | Pass | |
-| A-06 | D | VR link | Click **VR** | VR page opens for the same room (and same board, if not the first) | Fail | Bug 1: no way back to 2D from the VR page |
+| A-06 | D | VR link | Click **VR** | VR page opens for the same room (and same board, if not the first) | Pass | Bug 1: no way back to 2D from the VR page. Retest passed (2026-11-28) |
 | A-06b | V | Back to 2D | On the VR page, select the 2nd board and click **← 2D view** (top left). Then press the VR button (goes full screen), press Esc, and click **← 2D view** again | 2D page opens for the same room on the selected board. Esc leaves full screen first | Pass | |
 | A-07 | V | VR page with no room | Open `/vr.html` with no `?room=` | Address gets a random room code. The scene loads | Pass | |
 | A-08 | V | Room label in VR | Open `/vr.html?room=ABCDE` | The scene's room label shows ABCDE | Pass | |
@@ -188,19 +188,19 @@ Run `npm test`. It needs Node 18 or newer (tested on Node 22) and takes about a 
 
 | ID | Platform | Test | Steps | Expected | Result | Notes |
 |---|---|---|---|---|---|---|
-| E-01 | D | Temporary name | Open a new room | Toolbar shows `Whiteboard_####` in italics and "Not saved yet" | | |
-| E-02 | D | First Save asks for a name | Click **Save** | A box asks for a name, filled in with the temporary name | | |
-| E-03 | D | Cancel or empty name | Cancel the box. Then try Save with an empty name | Nothing is saved. Still "Not saved yet" | | |
-| E-04 | D | Save with a name | Save as "Planning" | Name shows (not italic) with "Saved at <time>" | | |
-| E-05 | D | Later Save | Draw, click Save | Saves straight away without asking for a name | | |
-| E-06 | D | Rename | **Rename** to "Planning v2" | New name shows here and in the other window. `/api/boards` shows the new name | | |
-| E-07 | D | Rename an unsaved board | On a never-saved board, Rename | Name changes but the board is still "Not saved yet", and Save all stays grey (Rename doesn't count as naming) | | |
+| E-01 | D | Temporary name | Open a new room | Toolbar shows `Whiteboard_####` in italics and "Not saved yet" | Pass | Pass (2026-11-28) |
+| E-02 | D | First Save asks for a name | Click **Save** | A box asks for a name, filled in with the temporary name | Pass | Pass (2026-11-28) |
+| E-03 | D | Cancel or empty name | Cancel the box. Then try Save with an empty name | Nothing is saved. Still "Not saved yet" | Pass | Pass (2026-11-28) |
+| E-04 | D | Save with a name | Save as "Planning" | Name shows (not italic) with "Saved at <time>" | Pass | Pass (2026-11-28) |
+| E-05 | D | Later Save | Draw, click Save | Saves straight away without asking for a name | Pass | Pass (2026-11-28) |
+| E-06 | D | Rename | **Rename** to "Planning v2" | New name shows here and in the other window. `/api/boards` shows the new name | Pass | Pass (2026-11-28) |
+| E-07 | D | Rename an unsaved board | On a never-saved board, Rename | Name changes but the board is still "Not saved yet", and Save all stays grey (Rename doesn't count as naming) | Pass | Pass (2026-11-28) |
 | E-08 | D | Save all greyed out | Room with two boards, only one saved | **Save all** is grey | Pass | Pass by Q-17 (2026-11-28) |
-| E-09 | D | Save all | Save each board once by itself, then draw on both, then **Save all** | Button is enabled. Both boards saved | | |
-| E-10 | D | Saved boards list | Click **Saved boards** | Lists every saved board with **Open** and **Open in VR** links. Links open the right room and board | | |
-| E-11 | D | Export image | Click **Export image** | PNG downloads named like `Planning-v2_2026-11-27_0710.png`, at the board's full size | | |
-| E-12 | V | VR page toolbar | In the VR page outside a headset, use **Save**, **Rename**, **Save all**, **Export image** in the top corner | Each works on the selected board | | |
-| E-13 | S | Name length | Try a name with 100 characters | Name is cut to 80 characters | | |
+| E-09 | D | Save all | Save each board once by itself, then draw on both, then **Save all** | Button is enabled. Both boards saved | Pass | Pass (2026-11-28) |
+| E-10 | D | Saved boards list | Click **Saved boards** | Lists every saved board with **Open** and **Open in VR** links. Links open the right room and board | Pass | Pass (2026-11-28) |
+| E-11 | D | Export image | Click **Export image** | PNG downloads named like `Planning-v2_2026-11-27_0710.png`, at the board's full size | Pass | Pass (2026-11-28) |
+| E-12 | V | VR page toolbar | In the VR page outside a headset, use **Save**, **Rename**, **Save all**, **Export image** in the top corner | Each works on the selected board | Pass | Pass (2026-11-28) |
+| E-13 | S | Name length | Try a name with 100 characters | Name is cut to 80 characters | Pass | Pass (2026-11-28) |
 
 ### F. Autosave, backup and restore (PR #1)
 
@@ -230,93 +230,93 @@ Run `npm test`. It needs Node 18 or newer (tested on Node 22) and takes about a 
 | ID | Platform | Test | Steps | Expected | Result | Notes |
 |---|---|---|---|---|---|---|
 | G-01 | H | Green buttons | Look at the tool panel | **Save**, **Save all**, **Rename**, **Export image** on the panel. Save all is grey until allowed, and pressing it then says why | Pass | . Changed by bugs V1-V5: buttons are on the new panel; bug V13: pressing grey Save all says which boards need a name. Pass by Q-04, Q-16 (2026-11-28) |
-| G-02 | H | Save on an unnamed board | Point at **Save** and pull the trigger | A small 2D window opens (`name.html`) with a name field filled with the temporary name | | |
-| G-03 | H | Name it in the window | Type a name (headset keyboard), press Save | Window says saved. The VR name tag updates. 2D page shows the name | | |
-| G-04 | H | Back to VR after the window | Close the window | You're back in VR (or press VR to go back in). Note which one happens on your headset | | |
-| G-05 | H | Fallback if no window | If the browser blocks the window | Page leaves VR and shows the normal name box. Pressing VR goes back in | | |
-| G-06 | H | Rename from VR | Trigger on **Rename** | Same window opens for renaming | | |
-| G-07 | H | Export from VR | Trigger on **Export image** | PNG downloads (check the headset's downloads) | | |
-| G-08 | H | Acts on the selected board | With 2+ boards, select the second and use Save, Rename and Export | They act on the selected board, not the first one | | |
+| G-02 | H | Save on an unnamed board | Point at **Save** and pull the trigger | A small 2D window opens (`name.html`) with a name field filled with the temporary name | Pass | Pass (2026-11-28): works but needs improvement to increase usability |
+| G-03 | H | Name it in the window | Type a name (headset keyboard), press Save | Window says saved. The VR name tag updates. 2D page shows the name | Pass | Pass (2026-11-28): works but needs improvement to increase usability |
+| G-04 | H | Back to VR after the window | Close the window | You're back in VR (or press VR to go back in). Note which one happens on your headset | Pass | Pass (2026-11-28): works but needs improvement to increase usability |
+| G-05 | H | Fallback if no window | If the browser blocks the window | Page leaves VR and shows the normal name box. Pressing VR goes back in | Pass | Pass (2026-11-28): works but needs improvement to increase usability |
+| G-06 | H | Rename from VR | Trigger on **Rename** | Same window opens for renaming | Pass | Pass (2026-11-28): works but needs improvement to increase usability |
+| G-07 | H | Export from VR | Trigger on **Export image** | PNG downloads (check the headset's downloads) | Pass | Pass (2026-11-28): works but needs improvement to increase usability |
+| G-08 | H | Acts on the selected board | With 2+ boards, select the second and use Save, Rename and Export | They act on the selected board, not the first one | Pass | Pass (2026-11-28): works but needs improvement to increase usability |
 
 ### H. Multiple whiteboards (PR #2 / #3)
 
 | ID | Platform | Test | Steps | Expected | Result | Notes |
 |---|---|---|---|---|---|---|
-| H-01 | D | Add whiteboard | Click **+ Add whiteboard** | New tab with a temporary name appears in this and the other window | | |
-| H-02 | D | Tabs | Switch tabs | Board changes. Italic = temporary name, red dot = unsaved changes | | |
-| H-03 | D | Address keeps the board | Switch to the 2nd tab, copy the address, open it in a new window | Opens on the same board (`&board=<id>`) | | |
-| H-04 | D | Tools act on the open tab | On tab 2: Save, Rename, Export, Erase | Only tab 2 is affected | | |
-| H-05 | D | Shared pen settings | Change colour and size, switch tabs | Same colour and size on every board | | |
-| H-06 | M | Draw on a later tab | On a phone, open tab 2 and draw | Drawing works | | |
+| H-01 | D | Add whiteboard | Click **+ Add whiteboard** | New tab with a temporary name appears in this and the other window | Pass | Pass (2026-11-28) |
+| H-02 | D | Tabs | Switch tabs | Board changes. Italic = temporary name, red dot = unsaved changes | Pass | Pass (2026-11-28) |
+| H-03 | D | Address keeps the board | Switch to the 2nd tab, copy the address, open it in a new window | Opens on the same board (`&board=<id>`) | Pass | Pass (2026-11-28) |
+| H-04 | D | Tools act on the open tab | On tab 2: Save, Rename, Export, Erase | Only tab 2 is affected | Pass | Pass (2026-11-28) |
+| H-05 | D | Shared pen settings | Change colour and size, switch tabs | Same colour and size on every board | Pass | Pass (2026-11-28) |
+| H-06 | M | Draw on a later tab | On a phone, open tab 2 and draw | Drawing works | Pass | Pass (2026-11-28) |
 | H-07 | S | 50 board limit | Add boards until 50 | The 51st is refused with a message | | |
-| H-08 | V | Boards in the VR scene | Make 4 boards, open VR page | First board in front. Others on a ring: left, right, then behind | | |
-| H-09 | V | Selected board | Point at (or draw on) a board | Orange frame and `>` in its name tag. "Selected: name (2 of 4)" shows | | |
-| H-10 | V | Drop-down | Outside a headset, pick a board in the top corner list | Selection changes | | |
-| H-11 | H | Add and Next board in VR | Trigger **Add whiteboard**, then **Next board** | New board appears on the ring. Next cycles the orange selection | | |
-| H-12 | H | Side and back boards | Walk to the side and back boards and draw | They can be reached and drawn on. Lighting looks fine | | |
-| H-13 | D + V | Sync both ways | Add, draw, rename in 2D and VR | Every change shows on the other page. Tab names update | | |
-| H-14 | S | Restart keeps order | Make 3 named boards, restart the server | All 3 come back in the same order with names | | |
+| H-08 | V | Boards in the VR scene | Make 4 boards, open VR page | First board in front. Others on a ring: left, right, then behind | Pass | Pass (2026-11-28) |
+| H-09 | V | Selected board | Point at (or draw on) a board | Orange frame and `>` in its name tag. "Selected: name (2 of 4)" shows | Pass | Pass (2026-11-28) |
+| H-10 | V | Drop-down | Outside a headset, pick a board in the top corner list | Selection changes | Pass | Pass (2026-11-28) |
+| H-11 | H | Add and Next board in VR | Trigger **Add whiteboard**, then **Next board** | New board appears on the ring. Next cycles the orange selection | Pass | Pass (2026-11-28) |
+| H-12 | H | Side and back boards | Walk to the side and back boards and draw | They can be reached and drawn on. Lighting looks fine | Pass | Pass (2026-11-28) |
+| H-13 | D + V | Sync both ways | Add, draw, rename in 2D and VR | Every change shows on the other page. Tab names update | Pass | Pass (2026-11-28) |
+| H-14 | S | Restart keeps order | Make 3 named boards, restart the server | All 3 come back in the same order with names | Pass | Pass (2026-11-28) |
 
 ### I. Remove whiteboard (PR #2 / #3)
 
 | ID | Platform | Test | Steps | Expected | Result | Notes |
 |---|---|---|---|---|---|---|
-| I-01 | D | Needs three clicks | Click **Remove whiteboard** once, then twice | Button counts down ("Click 2 more times…"). Board is still there | | |
-| I-02 | D | Third click removes | Click three times, each within 3 s | Board is removed for everyone. Page moves to the next board | | |
-| I-03 | D | Count resets after 3 s | Click once, wait 4 s, click twice | Board is not removed | | |
-| I-04 | D | Count resets on tab switch | Click twice, switch tabs, click once | Nothing is removed | | |
-| I-05 | D | Last board | Room with one board | Remove is disabled (or refused with a message) | | |
-| I-06 | S | Copy kept | After I-02, look in `data/removed/` | A file `<ROOM>.<board id>.<time>.json` holds the removed board | | |
-| I-07 | S | Removed stays removed | Remove a saved board, restart the server | It doesn't come back | | |
-| I-08 | H | Remove in VR | Trigger the red **Remove board (x3)** box three times | Label counts down. Only the selected board is removed | | |
-| I-09 | V | Ring closes the gap | Remove a middle board in the VR page | Later auto-placed boards move along the ring. Boards placed by hand stay | | |
+| I-01 | D | Needs three clicks | Click **Remove whiteboard** once, then twice | Button counts down ("Click 2 more times…"). Board is still there | Pass | Pass (2026-11-28) |
+| I-02 | D | Third click removes | Click three times, each within 3 s | Board is removed for everyone. Page moves to the next board | Pass | Pass (2026-11-28) |
+| I-03 | D | Count resets after 3 s | Click once, wait 4 s, click twice | Board is not removed | Pass | Pass (2026-11-28) |
+| I-04 | D | Count resets on tab switch | Click twice, switch tabs, click once | Nothing is removed | Pass | Pass (2026-11-28) |
+| I-05 | D | Last board | Room with one board | Remove is disabled (or refused with a message) | Pass | Pass (2026-11-28) |
+| I-06 | S | Copy kept | After I-02, look in `data/removed/` | A file `<ROOM>.<board id>.<time>.json` holds the removed board | Pass | Pass (2026-11-28) |
+| I-07 | S | Removed stays removed | Remove a saved board, restart the server | It doesn't come back | Pass | Pass (2026-11-28) |
+| I-08 | H | Remove in VR | Trigger the red **Remove board (x3)** box three times | Label counts down. Only the selected board is removed | Pass | Pass (2026-11-28) |
+| I-09 | V | Ring closes the gap | Remove a middle board in the VR page | Later auto-placed boards move along the ring. Boards placed by hand stay | Pass | Pass (2026-11-28) |
 
 ### J. Board size and 2D zoom (PR #4)
 
 | ID | Platform | Test | Steps | Expected | Result | Notes |
 |---|---|---|---|---|---|---|
-| J-01 | D | Size button | Look at the tab bar, switch tabs | **Size: 1.5 × 1 m** shows each board's size | | |
-| J-02 | D | Presets | Apply Standard, Wide, Large, Wall, Tall in turn | Each applies and the board keeps its shape on screen | | |
-| J-03 | D | Custom size | Width 2.2, height 1.3 | Board becomes 2.2 × 1.3 m | | |
-| J-04 | D | Out of range | Width 9 m (or height 0.2 m) | Error message. Nothing changes | | |
-| J-05 | D | Grow keeps drawings centred | Draw in the middle, change to Wall | Drawing stays in the middle, same size | | |
-| J-06 | D | Shrink crops, grow brings back | Draw near the edge, shrink to Tall, then back to Standard | The edge drawing is hidden, then comes back exactly | | |
-| J-07 | D | Others see the resize | Resize in one window | Other window updates at once | | |
-| J-08 | D | Drawing during a resize | Keep drawing in window 2 while window 1 resizes | Strokes land in the right place | | |
-| J-09 | D | Zoom | Use −, +, Fit | Zoom changes, percentage shows on Fit, up to 200% | | |
-| J-10 | D | Draw while zoomed | Zoom to 200%, scroll, draw | Line appears under the cursor | | |
-| J-11 | D | Tab bar while scrolling | Scroll a zoomed board | Tab bar stays at the top. Switching tabs resets to Fit | | |
-| J-12 | D | Export size | Export a Wall board | PNG is 4000 × 2000 px | | |
-| J-13 | S | Size is saved | Resize a named board, restart. Resize an unsaved board, crash, restore | Size is kept both times | | |
-| J-14 | V | VR board size | Use the desktop size picker in the VR page. Set a custom size from 2D | Plane resizes. Picker shows "Custom (…)" for the custom size | | |
-| J-15 | H | Board size button | Trigger **Board size** repeatedly | Cycles Standard → Wide → Large → Wall → Tall → Standard. Label updates | | |
-| J-16 | H | Wide first board | Make the first board Wall | Board sits behind the button columns. Buttons can still be pressed | | |
-| J-17 | H | No overlaps | Mix sizes across 5+ boards | Side boards don't overlap. A full ring starts a new ring further out | | |
-| J-18 | H | Big board speed | Draw quickly on a Wall board | No noticeable stutter. Text is sharp | | |
-| J-19 | H | Pen dot | Draw on each size | Pen dot matches the stroke width | | |
-| J-20 | H | No stray pen dot | Resize or remove a board you were drawing on | No leftover pen-dot sphere | | |
+| J-01 | D | Size button | Look at the tab bar, switch tabs | **Size: 1.5 × 1 m** shows each board's size | Pass | Pass (2026-11-28) |
+| J-02 | D | Presets | Apply Standard, Wide, Large, Wall, Tall in turn | Each applies and the board keeps its shape on screen | Pass | Pass (2026-11-28) |
+| J-03 | D | Custom size | Width 2.2, height 1.3 | Board becomes 2.2 × 1.3 m | Pass | Pass (2026-11-28) |
+| J-04 | D | Out of range | Width 9 m (or height 0.2 m) | Error message. Nothing changes | Pass | Pass (2026-11-28) |
+| J-05 | D | Grow keeps drawings centred | Draw in the middle, change to Wall | Drawing stays in the middle, same size | Pass | Pass (2026-11-28) |
+| J-06 | D | Shrink crops, grow brings back | Draw near the edge, shrink to Tall, then back to Standard | The edge drawing is hidden, then comes back exactly | Pass | Pass (2026-11-28) |
+| J-07 | D | Others see the resize | Resize in one window | Other window updates at once | Pass | Pass (2026-11-28) |
+| J-08 | D | Drawing during a resize | Keep drawing in window 2 while window 1 resizes | Strokes land in the right place | Pass | Pass (2026-11-28) |
+| J-09 | D | Zoom | Use −, +, Fit | Zoom changes, percentage shows on Fit, up to 200% | Pass | Pass (2026-11-28) |
+| J-10 | D | Draw while zoomed | Zoom to 200%, scroll, draw | Line appears under the cursor | Pass | Pass (2026-11-28) |
+| J-11 | D | Tab bar while scrolling | Scroll a zoomed board | Tab bar stays at the top. Switching tabs resets to Fit | Pass | Pass (2026-11-28) |
+| J-12 | D | Export size | Export a Wall board | PNG is 4000 × 2000 px | Pass | Pass (2026-11-28) |
+| J-13 | S | Size is saved | Resize a named board, restart. Resize an unsaved board, crash, restore | Size is kept both times | Pass | Pass (2026-11-28) |
+| J-14 | V | VR board size | Use the desktop size picker in the VR page. Set a custom size from 2D | Plane resizes. Picker shows "Custom (…)" for the custom size | Pass | Pass (2026-11-28) |
+| J-15 | H | Board size button | Trigger **Board size** repeatedly | Cycles Standard → Wide → Large → Wall → Tall → Standard. Label updates | Pass | Pass (2026-11-28) |
+| J-16 | H | Wide first board | Make the first board Wall | Board sits behind the button columns. Buttons can still be pressed | Pass | Pass (2026-11-28) |
+| J-17 | H | No overlaps | Mix sizes across 5+ boards | Side boards don't overlap. A full ring starts a new ring further out | Pass | Pass (2026-11-28) |
+| J-18 | H | Big board speed | Draw quickly on a Wall board | No noticeable stutter. Text is sharp | Pass | Pass (2026-11-28) |
+| J-19 | H | Pen dot | Draw on each size | Pen dot matches the stroke width | Skip | Ignored at Kate's request (2026-11-28) |
+| J-20 | H | No stray pen dot | Resize or remove a board you were drawing on | No leftover pen-dot sphere | Pass | Pass (2026-11-28) |
 
 ### K. Moving whiteboards (PR #5)
 
 | ID | Platform | Test | Steps | Expected | Result | Notes |
 |---|---|---|---|---|---|---|
-| K-01 | H | Grip tip | Enter VR | A tip about holding the grip button shows | | |
-| K-02 | H | Grab a pointed board | Point at a board, hold grip | Board is selected and its frame turns blue | | |
-| K-03 | H | Grab with nothing pointed | Point at the floor, hold grip | The selected board is grabbed | | |
-| K-04 | H | Move, raise, turn | Swing, raise and twist the controller | Board follows smoothly, stays upright, never goes below the floor | | |
-| K-05 | H | Push and pull | Thumbstick forward / back while holding | Board moves away / closer. Stops at about 0.2 m | | |
-| K-06 | H | Turn on the spot | Thumbstick left / right while holding | Board turns | | |
-| K-07 | H | Drop | Let go of grip | Board stays. Frame goes back to orange | | |
-| K-08 | H | Two hands | Grab with one hand, press and release grip on the other | Nothing happens. The first hand keeps the board | | |
-| K-09 | H | Leave VR while holding | Exit VR mid-grab | Board drops where it is | | |
+| K-01 | H | Grip tip | Enter VR | A tip about holding the grip button shows | Pass | Pass (2026-11-28) |
+| K-02 | H | Grab a pointed board | Point at a board, hold grip | Board is selected and its frame turns blue | Pass | Pass (2026-11-28) |
+| K-03 | H | Grab with nothing pointed | Point at the floor, hold grip | The selected board is grabbed | Pass | Pass (2026-11-28) |
+| K-04 | H | Move, raise, turn | Swing, raise and twist the controller | Board follows smoothly, stays upright, never goes below the floor | Pass | Pass (2026-11-28) |
+| K-05 | H | Push and pull | Thumbstick forward / back while holding | Board moves away / closer. Stops at about 0.2 m | Pass | Pass (2026-11-28) |
+| K-06 | H | Turn on the spot | Thumbstick left / right while holding | Board turns | Pass | Pass (2026-11-28) |
+| K-07 | H | Drop | Let go of grip | Board stays. Frame goes back to orange | Pass | Pass (2026-11-28) |
+| K-08 | H | Two hands | Grab with one hand, press and release grip on the other | Nothing happens. The first hand keeps the board | Pass | Pass (2026-11-28) |
+| K-09 | H | Leave VR while holding | Exit VR mid-grab | Board drops where it is | Pass | Pass (2026-11-28) |
 | K-10 | H | Auto place | Select a moved board and press **Reset position** | Board goes back to the ring. On a board that wasn't moved, the message says it is already in its own place | Pass | . Changed by bug V11: renamed Reset position, always pressable. Pass by Q-14 (2026-11-28) |
-| K-11 | H | Draw on a moved board | Move a board, then draw on it | Drawing works | | |
-| K-12 | V | Desktop Move board panel | **Move board**: Left, Right, Up, Down, Closer, Farther, both Turns, **Face me**, **Auto place** | Each moves the selected board one step (25 cm / 15°). Status says "Placed by hand" / "Placed automatically" correctly when switching boards | |. Auto place is now called Reset position (bug V11) |
-| K-13 | V | Others see moves | Move a board in one window | The other window sees it move live and its final place | | |
-| K-14 | S | Place is saved | Move a named board, wait, restart. Move an unsaved board, crash, restore | Place kept both times | | |
-| K-15 | V | Old rooms | Open a room saved before PR #5 | Boards use the automatic layout | | |
-| K-16 | V | Resize or add keeps hand placement | Resize a moved board. Add and remove other boards | Moved board stays put | | |
-| K-17 | D | 2D ignores places | Move boards in VR, look at 2D | 2D page is unaffected | | |
+| K-11 | H | Draw on a moved board | Move a board, then draw on it | Drawing works | Pass | Pass (2026-11-28) |
+| K-12 | V | Desktop Move board panel | **Move board**: Left, Right, Up, Down, Closer, Farther, both Turns, **Face me**, **Auto place** | Each moves the selected board one step (25 cm / 15°). Status says "Placed by hand" / "Placed automatically" correctly when switching boards | Pass | . Auto place is now called Reset position (bug V11). Pass (2026-11-28) |
+| K-13 | V | Others see moves | Move a board in one window | The other window sees it move live and its final place | Pass | Pass (2026-11-28) |
+| K-14 | S | Place is saved | Move a named board, wait, restart. Move an unsaved board, crash, restore | Place kept both times | Pass | Pass (2026-11-28) |
+| K-15 | V | Old rooms | Open a room saved before PR #5 | Boards use the automatic layout | Pass | Pass (2026-11-28) |
+| K-16 | V | Resize or add keeps hand placement | Resize a moved board. Add and remove other boards | Moved board stays put | Pass | Pass (2026-11-28) |
+| K-17 | D | 2D ignores places | Move boards in VR, look at 2D | 2D page is unaffected | Pass | Pass (2026-11-28) |
 
 ### L. Moving yourself and long reach (PR #6)
 
@@ -346,67 +346,67 @@ Run `npm test`. It needs Node 18 or newer (tested on Node 22) and takes about a 
 
 | ID | Platform | Test | Steps | Expected | Result | Notes |
 |---|---|---|---|---|---|---|
-| M-01 | H | Panel modes | Trigger **Panel** repeatedly. Reload | Cycles Panel: Follow → Wrist → Stay. Choice survives reload | | |
+| M-01 | H | Panel modes | Trigger **Panel** repeatedly. Reload | Cycles Panel: Follow → Wrist → Stay. Choice survives reload | Pass | Pass (2026-11-28) |
 | M-02 | H | Follow: in front at start | Enter VR in Follow | Panel is in front of you | Pass | Pass by Q-01 (2026-11-28) |
-| M-03 | H | Follow: small turns | Turn your head less than 30° | Panel stays still (changed by bug 32: was ~50°) | | |
-| M-04 | H | Follow: big turns | Turn fully away and wait | Panel glides in front of you after a moment | | |
-| M-05 | H | Follow: moving | Teleport or walk more than 1 m | Panel comes along | | |
-| M-06 | H | Follow: never mid-action | Turn away while drawing, pointing at the panel, or holding a board | Panel doesn't move until you stop | | |
-| M-07 | H | Follow: snap turn | One 30° snap turn | Panel doesn't move | | |
-| M-08 | H | Follow: sitting | Sit down, turn away | Panel comes back lower | | |
+| M-03 | H | Follow: small turns | Turn your head less than 30° | Panel stays still (changed by bug 32: was ~50°) | Pass | Pass (2026-11-28) |
+| M-04 | H | Follow: big turns | Turn fully away and wait | Panel glides in front of you after a moment | Pass | Pass (2026-11-28) |
+| M-05 | H | Follow: moving | Teleport or walk more than 1 m | Panel comes along | Pass | Pass (2026-11-28) |
+| M-06 | H | Follow: never mid-action | Turn away while drawing, pointing at the panel, or holding a board | Panel doesn't move until you stop | Pass | Pass (2026-11-28) |
+| M-07 | H | Follow: snap turn | One 30° snap turn | Panel doesn't move | Pass | Pass (2026-11-28) |
+| M-08 | H | Follow: sitting | Sit down, turn away | Panel comes back lower | Pass | Pass (2026-11-28) |
 | M-09 | H | Panel doesn't block the board | Face the board | You can still draw on the middle of it | Pass | . Changed by bugs V1-V5: the panel is below the board now. Pass by Q-19 (2026-11-28) |
-| M-10 | H | Wrist: position | Choose Wrist | Small panel above the left hand, readable, facing you. Note any size, offset or tilt changes wanted | | |
+| M-10 | H | Wrist: position | Choose Wrist | Small panel above the left hand, readable, facing you. Note any size, offset or tilt changes wanted | Pass | Pass (2026-11-28) |
 | M-11 | H | Wrist: using it | Use the right controller on the wrist panel (trigger and touch) | Buttons and colours work | Pass | Pass by Q-09, Q-10 (trigger only now) (2026-11-28) |
-| M-12 | H | Wrist: left hand still works | With the wrist panel, draw, grab and teleport with the left hand | All work | | |
+| M-12 | H | Wrist: left hand still works | With the wrist panel, draw, grab and teleport with the left hand | All work | Pass | Pass (2026-11-28) |
 | M-13 | H | Off the wrist | Switch Wrist → Stay | Full size again, in front of you | Pass | Pass by Q-03 (2026-11-28) |
-| M-14 | H | Stay | Choose Stay, move around. Press B or Y | Panel stays put. B/Y brings it in front | | |
-| M-15 | H | Back to start brings panel | In Follow and Stay, press Back to start | Panel comes back too | | |
-| M-16 | H | Leave VR | Exit VR | Panel is back at the start spot for the desktop view | | |
-| M-17 | H | Every button in every mode | In each mode, try colours, size, eraser, highlighter, Erase board, Save, Rename, Save all, Export, Add/Next/Remove board, Size, Auto place, Moving, Reach, Back to start, Add 360 board, Go inside | All work | |. Auto place is now Reset position (bug V11) |
-| M-18 | H | Lighting | Turn around with the panel following | Board lighting doesn't change | | |
+| M-14 | H | Stay | Choose Stay, move around. Press B or Y | Panel stays put. B/Y brings it in front | Pass | Pass (2026-11-28) |
+| M-15 | H | Back to start brings panel | In Follow and Stay, press Back to start | Panel comes back too | Pass | Pass (2026-11-28) |
+| M-16 | H | Leave VR | Exit VR | Panel is back at the start spot for the desktop view | Pass | Pass (2026-11-28) |
+| M-17 | H | Every button in every mode | In each mode, try colours, size, eraser, highlighter, Erase board, Save, Rename, Save all, Export, Add/Next/Remove board, Size, Auto place, Moving, Reach, Back to start, Add 360 board, Go inside | All work | Pass | . Auto place is now Reset position (bug V11). Pass (2026-11-28) |
+| M-18 | H | Lighting | Turn around with the panel following | Board lighting doesn't change | Pass | Pass (2026-11-28) |
 
 ### N. 360° boards (PR #8)
 
 | ID | Platform | Test | Steps | Expected | Result | Notes |
 |---|---|---|---|---|---|---|
-| N-01 | D | Add 360° board | **+ Add 360° board** | Tab "360° Whiteboard_####". Size button shows "360°: 8 m around × 1.8 m high" and is disabled | | |
-| N-02 | D | Turn the view | ◀ Turn / Turn ▶ / Front | View turns 45° each press. Front resets. "front (in VR)" and "behind (edges join here)" tags show | | |
-| N-03 | D | Draw across the join | Turn so the "behind" line is in the middle, draw across it | Line carries on across the join with no gap or jump | | |
-| N-04 | D | Export | Export a 360° board | 8000 × 1800 PNG without the front/behind tags | | |
-| N-05 | D + V | Sync | Draw and Erase board on a 360° board in 2D, VR page and a second window | All stay in step | | |
-| N-06 | H | Add from VR | Trigger **Add 360 board** on the panel | A grey drum appears behind the start. Message says to press Go inside | |. Changed by bugs V1-V5 |
-| N-07 | H | Go inside / Step out | Select the drum, press **Go inside**. Press again, or Back to start | You're in the middle facing the front. Label says "Step out". Pressing again or Back to start takes you out. Go inside is grey unless a 360° board is selected | | |
-| N-08 | H | Draw all round | Draw all the way round, including behind you across the join | Ink appears everywhere. Pen dot shows on the wall | | |
-| N-09 | H | Not from outside | Point at the drum from outside | No pen dot and no drawing | | |
-| N-10 | H | Selected and name tag | Select the 360° board | Rims turn orange. Name tag readable inside and outside ("360: …") | | |
+| N-01 | D | Add 360° board | **+ Add 360° board** | Tab "360° Whiteboard_####". Size button shows "360°: 8 m around × 1.8 m high" and is disabled | Pass | Pass (2026-11-28) |
+| N-02 | D | Turn the view | ◀ Turn / Turn ▶ / Front | View turns 45° each press. Front resets. "front (in VR)" and "behind (edges join here)" tags show | Pass | Pass (2026-11-28) |
+| N-03 | D | Draw across the join | Turn so the "behind" line is in the middle, draw across it | Line carries on across the join with no gap or jump | Pass | Pass (2026-11-28) |
+| N-04 | D | Export | Export a 360° board | 8000 × 1800 PNG without the front/behind tags | Pass | Pass (2026-11-28) |
+| N-05 | D + V | Sync | Draw and Erase board on a 360° board in 2D, VR page and a second window | All stay in step | Pass | Pass (2026-11-28) |
+| N-06 | H | Add from VR | Trigger **Add 360 board** on the panel | A grey drum appears behind the start. Message says to press Go inside | Pass | . Changed by bugs V1-V5. Pass (2026-11-28) |
+| N-07 | H | Go inside / Step out | Select the drum, press **Go inside**. Press again, or Back to start | You're in the middle facing the front. Label says "Step out". Pressing again or Back to start takes you out. Go inside is grey unless a 360° board is selected | Pass | Pass (2026-11-28) |
+| N-08 | H | Draw all round | Draw all the way round, including behind you across the join | Ink appears everywhere. Pen dot shows on the wall | Pass | Pass (2026-11-28) |
+| N-09 | H | Not from outside | Point at the drum from outside | No pen dot and no drawing | Pass | Pass (2026-11-28) |
+| N-10 | H | Selected and name tag | Select the 360° board | Rims turn orange. Name tag readable inside and outside ("360: …") | Pass | Pass (2026-11-28) |
 | N-11 | H | Fixed size | Press Board size on a 360° board | Board size label reads "Size: fixed (360)" and the button is grey. Pressing it says 360 boards have a fixed size | Pass | . Changed by bug V10. Pass by Q-13 (2026-11-28) |
-| N-12 | H | Can't grab | Grip on a 360° board | Message says it can't be grabbed. Desktop Move board panel still moves it. Auto place puts it back | |. Auto place is now Reset position (bug V11) |
-| N-13 | H | Export from VR | Export a 360° board in VR | Panorama PNG downloads | | |
-| N-14 | D + S | Save and restore | Save, Rename, autosave, Save all, restore unsaved and Remove (×3) on a 360° board. Restart | All work. It reloads as a 360° board | | |
-| N-15 | V | Several 360° boards | Add 3 | They line up one behind another. Flat boards keep their layout | | |
-| N-16 | H | Performance and comfort | Draw on the wall for a minute. Step in and out with teleport | Smooth frame rate. Wall readable at 1.27 m | | |
+| N-12 | H | Can't grab | Grip on a 360° board | Message says it can't be grabbed. Desktop Move board panel still moves it. Auto place puts it back | Pass | . Auto place is now Reset position (bug V11). Pass (2026-11-28) |
+| N-13 | H | Export from VR | Export a 360° board in VR | Panorama PNG downloads | Pass | Pass (2026-11-28) |
+| N-14 | D + S | Save and restore | Save, Rename, autosave, Save all, restore unsaved and Remove (×3) on a 360° board. Restart | All work. It reloads as a 360° board | Pass | Pass (2026-11-28) |
+| N-15 | V | Several 360° boards | Add 3 | They line up one behind another. Flat boards keep their layout | Pass | Pass (2026-11-28) |
+| N-16 | H | Performance and comfort | Draw on the wall for a minute. Step in and out with teleport | Smooth frame rate. Wall readable at 1.27 m | Pass | Pass (2026-11-28) |
 
 ### O. Highlighter and Erase highlights (PR #9)
 
 | ID | Platform | Test | Steps | Expected | Result | Notes |
 |---|---|---|---|---|---|---|
-| O-01 | D | Even colour | Choose **Highlighter**, scribble over the same spot many times | Colour stays even, no darker blotches | | |
-| O-02 | D | Writing stays readable | Highlight over writing. Then write over a highlight | Writing is on top and readable both ways | | |
-| O-03 | D | Colours | Try each of the 5 swatches and the colour picker. Cross two colours | Colour changes. Crossing colours mix (yellow + pink = orange) | | |
-| O-04 | D | Pens remember settings | Set marker red 10 px, highlighter green 40 px, switch back and forth | Each pen keeps its own colour and size. Highlighter starts at 30 px | | |
-| O-05 | D | Eraser removes both | **Eraser** over writing and highlight | Both are rubbed out | | |
-| O-06 | D | Erase highlights | **Erase highlights** over writing and highlight | Highlight goes, writing stays | | |
-| O-07 | D | Colour while erasing | While erasing, pick a colour | Goes back to that pen | | |
-| O-08 | D | Sync and reload | Second window watches. Then reload both | Highlights and both erasers show live, and look the same after reload | | |
-| O-09 | S | Save and restore | Save and reload a board with highlights. Crash and restore an unsaved one | Highlights and highlight-erasing come back the same | | |
-| O-10 | D + H | Export | Export in 2D and VR | Highlights see-through in the PNG, writing on top | | |
-| O-11 | D + H | 360° join | Highlight and highlight-erase across the join (Turn ×4 in 2D, behind you in VR) | Even on both sides | | |
-| O-12 | D | Resize | Resize a highlighted board | Highlights move with everything else | | |
+| O-01 | D | Even colour | Choose **Highlighter**, scribble over the same spot many times | Colour stays even, no darker blotches | Pass | Pass (2026-11-28) |
+| O-02 | D | Writing stays readable | Highlight over writing. Then write over a highlight | Writing is on top and readable both ways | Pass | Pass (2026-11-28) |
+| O-03 | D | Colours | Try each of the 5 swatches and the colour picker. Cross two colours | Colour changes. Crossing colours mix (yellow + pink = orange) | Pass | Pass (2026-11-28) |
+| O-04 | D | Pens remember settings | Set marker red 10 px, highlighter green 40 px, switch back and forth | Each pen keeps its own colour and size. Highlighter starts at 30 px | Pass | Pass (2026-11-28) |
+| O-05 | D | Eraser removes both | **Eraser** over writing and highlight | Both are rubbed out | Pass | Pass (2026-11-28) |
+| O-06 | D | Erase highlights | **Erase highlights** over writing and highlight | Highlight goes, writing stays | Pass | Pass (2026-11-28) |
+| O-07 | D | Colour while erasing | While erasing, pick a colour | Goes back to that pen | Pass | Pass (2026-11-28) |
+| O-08 | D | Sync and reload | Second window watches. Then reload both | Highlights and both erasers show live, and look the same after reload | Pass | Pass (2026-11-28) |
+| O-09 | S | Save and restore | Save and reload a board with highlights. Crash and restore an unsaved one | Highlights and highlight-erasing come back the same | Pass | Pass (2026-11-28) |
+| O-10 | D + H | Export | Export in 2D and VR | Highlights see-through in the PNG, writing on top | Pass | Pass (2026-11-28) |
+| O-11 | D + H | 360° join | Highlight and highlight-erase across the join (Turn ×4 in 2D, behind you in VR) | Even on both sides | Pass | Pass (2026-11-28) |
+| O-12 | D | Resize | Resize a highlighted board | Highlights move with everything else | Pass | Pass (2026-11-28) |
 | O-13 | H | Pick up the highlighter | Pull the trigger on **Pen mode** (top left of the pen rows) again and again | Label goes Dry erase → Highlighter, yellow → green → pink → blue → orange → Dry erase. The pen dot shows each colour | Pass | . Changed by bug V7: trigger, not touch. Changed: the Highlighter box is now Pen mode (R-15). Pass by R-15 (2026-11-28) |
-| O-14 | H | Eraser boxes | Pull the trigger on **Eraser**, draw. Then on **Erase highlights**, draw. Then on **Eraser** again | Pink **Eraser** rubs out writing and highlights. Yellow **Erase highlights** rubs out highlights only. Pressing either again keeps that eraser. The box in use is a bit bigger | |. Changed by bug V8: two boxes instead of one that toggled |
+| O-14 | H | Eraser boxes | Pull the trigger on **Eraser**, draw. Then on **Erase highlights**, draw. Then on **Eraser** again | Pink **Eraser** rubs out writing and highlights. Yellow **Erase highlights** rubs out highlights only. Pressing either again keeps that eraser. The box in use is a bit bigger | Pass | . Changed by bug V8: two boxes instead of one that toggled. Pass (2026-11-28) |
 | O-15 | H | Colour cylinder | While highlighting, pull the trigger on a colour disc | Pen mode goes back to Dry erase and the marker uses that colour, at its old size | Pass | . Changed by bug V7: trigger, not touch. Pass by R-15 (2026-11-28) |
-| O-16 | H | +/- | Press +/- with marker, then highlighter | Only the pen in use changes | | |
-| O-17 | H | Boxes reachable | In Follow, Wrist and Stay panel modes | Highlighter and Eraser boxes can be reached | | |
+| O-16 | H | +/- | Press +/- with marker, then highlighter | Only the pen in use changes | Pass | Pass (2026-11-28) |
+| O-17 | H | Boxes reachable | In Follow, Wrist and Stay panel modes | Highlighter and Eraser boxes can be reached | Pass | Pass (2026-11-28) |
 
 ### Q. Headset fixes, round 1 (bugs V1 to V13, PR #19)
 
