@@ -32,7 +32,7 @@ import { PX_PER_METRE, DEFAULT_WIDTH, DEFAULT_HEIGHT, isWrapBoard } from '../boa
 export const CENTER = { x: 0, z: 0.1 };   // where the user stands
 export const BOARD_HEIGHT = 1.4;          // centre of a standard board above the floor
 
-export const FIRST_Z = -1.4;              // the first board's distance (1.5 m in front of the start)
+export const FIRST_Z = -1.6;              // the first board's distance (1.7 m in front of the start, beyond the panel)
 export const FIRST_BOTTOM = 1.0;          // lowest edge of the first board (above the tool panel)
 const RING_BOTTOM = 0.4;                  // lowest edge of boards on the ring
 const RING_RADIUS = 1.7;

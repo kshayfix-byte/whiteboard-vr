@@ -1,5 +1,6 @@
 import { tools, useEraser, onToolChange } from '../vr/session';
 import { watchTouch } from '../vr/reach';
+import { createLook } from '../vr/button-look';
 
 // An eraser box on the tool panel. Point at it and pull the trigger to pick
 // up that eraser. There are two boxes (bug V8: one box that toggled between
@@ -8,7 +9,8 @@ import { watchTouch } from '../vr/reach';
 //   eraser-picker="highlightsOnly: true" yellow "Erase highlights": highlights
 //                                       only, writing stays
 // Pressing a box again keeps the same eraser. The box of the eraser in use
-// is a bit bigger.
+// shows the active colour (see vr/button-look.js); the pointer line takes
+// the eraser's colour (pink or yellow).
 const HIGHLIGHT_ERASER_COLOR = '#FFF176';
 
 
@@ -40,13 +42,11 @@ AFRAME.registerComponent('eraser-picker', {
 
         this.el.sceneEl.addEventListener( 'mouseup', this.onMouseUp.bind(this), false );
 
-        this.el.setAttribute('material', {
-            color: this.boxColor()
-        })
-        this.baseScale = this.el.object3D.scale.clone();
+        this.look = createLook(this.el);
         // Point at it and pull the trigger (see vr/reach.js).
         this.touch = watchTouch(this.el, (controller) => {
             this.activateEraser()
+            this.look.flash();
             controller.setAttribute('line', { color: this.boxColor() });
         });
         onToolChange(() => this.show());
@@ -61,11 +61,9 @@ AFRAME.registerComponent('eraser-picker', {
     activateEraser: function() {
         useEraser(this.boxColor(), this.data.highlightsOnly);
     },
-    // The box of the eraser in use is a bit bigger.
+    // The box of the eraser in use shows the active colour.
     show: function() {
-        const inUse = tools.clearing && !!tools.highlight === this.data.highlightsOnly;
-        const k = inUse ? 1.3 : 1;
-        if (this.baseScale) this.el.object3D.scale.set(this.baseScale.x * k, this.baseScale.y * k, this.baseScale.z);
+        this.look.setActive(tools.clearing && !!tools.highlight === this.data.highlightsOnly);
     },
     onMouseUp: function(evt) {
         // Controllers also send mouseup events (with no position); only real mouse clicks count here.

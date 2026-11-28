@@ -26,6 +26,7 @@ Out of scope for now: **item 4, text labels and the in-VR keyboard**. It is defe
    - [N. 360° boards](#n-360-boards-pr-8)
    - [O. Highlighter and Erase highlights](#o-highlighter-and-erase-highlights-pr-9)
    - [Q. Headset fixes, round 1](#q-headset-fixes-round-1-bugs-v1-to-v13-pr-19)
+   - [R. Headset fixes, round 2](#r-headset-fixes-round-2-bugs-27-to-31-pr-20)
    - [P. Combined, multi-user and performance checks](#p-combined-multi-user-and-performance-checks)
 5. [Known risks and things to watch](#5-known-risks-and-things-to-watch)
 6. [Bug log](#bug-log)
@@ -111,7 +112,7 @@ Run `npm test`. It needs Node 18 or newer (tested on Node 22) and takes about a 
 |---|---|---|
 | `test/board-store.test.js` | U-01 to U-25 | Room codes, draw validation, highlighter flags, names, sizes, shapes, poses. Adding (max 50) and removing boards (copy kept, last one refused). Save, Rename, Save all rules. Saving and reloading after a restart. Autosave. Resizing around the centre. Old or broken files. Backup, crash detection, restore and discard. |
 | `test/realtime.test.js` | S-01 to S-09 | A real server with Socket.io clients: late joiners get the drawing, strokes only reach the same room, bad messages are ignored, Erase all, Add/Remove board, Save/Rename/Save all, resize (including a stroke drawn at the old size), moving boards, and the `/api` addresses. |
-| `test/client-logic.test.mjs` | C-01 to C-10 | Highlight colour mixing, drawing across the 360° join, export file names, size presets, the three-click Remove guard, where the VR tool panel and first board go, and that Reach only limits drawing. |
+| `test/client-logic.test.mjs` | C-01 to C-11 | Highlight colour mixing, drawing across the 360° join, export file names, size presets, the three-click Remove guard, where the VR tool panel and first board go, that Reach only limits drawing, and the panel's colour scheme. |
 
 | ID | Test | Result | Notes |
 |---|---|---|---|
@@ -179,7 +180,7 @@ Run `npm test`. It needs Node 18 or newer (tested on Node 22) and takes about a 
 | D-05 | H | Pick a colour | Point at a colour disc and pull the trigger | Pen dot changes colour. Next stroke uses it | |. Changed by bug V7: trigger, not touch |
 | D-06 | H | Pen size | Point at **+** and **-** and pull the trigger | Pen dot grows and shrinks. The label between them shows the size ("Pen size 20"). Strokes match the dot | |. Changed by bugs V7, V12 |
 | D-07 | H | Eraser | Point at the pink **Eraser** box and pull the trigger, then draw over a line | Line is rubbed out | |. Changed by bugs V7, V8 |
-| D-08 | H | Erase board | Point at the red **Erase board (x3)** box and pull the trigger three times, each within 3 s | Label counts down ("Touch 2 more") and the status line asks to confirm. Only the third touch erases the selected board, everywhere. Waiting 3 s or selecting another board starts over | | Changed by bug 4. Changed by bug V7: touches no longer count, only trigger presses |
+| D-08 | H | Erase board | Point at the red **Erase board (x3)** box and pull the trigger three times, each within 3 s | Label counts down ("Press 2 more", then "Press 1 more") and the status line asks to confirm. Only the third press erases the selected board, everywhere. Waiting 3 s or selecting another board starts over | | Changed by bug 4. Changed by bug V7: touches no longer count, only trigger presses |
 | D-09 | H | Text readable | Look at labels and the room label | Text is readable and not blurry | | |
 | D-10 | H | Leave VR | Take off / exit VR | The page returns to the normal desktop view without errors | | |
 
@@ -402,7 +403,7 @@ Run `npm test`. It needs Node 18 or newer (tested on Node 22) and takes about a 
 | O-11 | D + H | 360° join | Highlight and highlight-erase across the join (Turn ×4 in 2D, behind you in VR) | Even on both sides | | |
 | O-12 | D | Resize | Resize a highlighted board | Highlights move with everything else | | |
 | O-13 | H | Pick up the highlighter | Point at the see-through **Highlighter** box and pull the trigger, then again | Picks it up, then cycles colours. Pen dot shows the colour | |. Changed by bug V7: trigger, not touch |
-| O-14 | H | Eraser box toggles | Pull the trigger on **Eraser**, draw. Then on **Erase highlights**, draw. Then on **Eraser** again | Pink **Eraser** rubs out writing and highlights. Yellow **Erase highlights** rubs out highlights only. Pressing either again keeps that eraser. The box in use is a bit bigger | |. Changed by bug V8: two boxes instead of one that toggled |
+| O-14 | H | Eraser boxes | Pull the trigger on **Eraser**, draw. Then on **Erase highlights**, draw. Then on **Eraser** again | Pink **Eraser** rubs out writing and highlights. Yellow **Erase highlights** rubs out highlights only. Pressing either again keeps that eraser. The box in use is a bit bigger | |. Changed by bug V8: two boxes instead of one that toggled |
 | O-15 | H | Colour cylinder | While highlighting, pull the trigger on a colour disc | Back to marker with its old size | |. Changed by bug V7: trigger, not touch |
 | O-16 | H | +/- | Press +/- with marker, then highlighter | Only the pen in use changes | | |
 | O-17 | H | Boxes reachable | In Follow, Wrist and Stay panel modes | Highlighter and Eraser boxes can be reached | | |
@@ -432,6 +433,22 @@ The VR tool panel was rebuilt as one tilted plate below the board, with a grab h
 | Q-17 | D + V | Save all label (V13) | Room with two boards, one never saved | The grey button reads "Save all (1 unnamed)". Its tooltip names the board. After saving it, it reads "Save all" and works | | |
 | Q-18 | V | Desktop VR page | Open the VR page without a headset | The panel is visible below the board. Clicking its buttons with the mouse works and doesn't draw on the board behind it | | |
 | Q-19 | H | Drawing past the panel | Draw on the lower part of the first board | You can reach the whole board. Point through the panel and nothing is drawn behind it | | |
+
+### R. Headset fixes, round 2 (bugs 27 to 31, PR #20)
+
+From Kate's retest of section Q on 2026-11-28.
+
+| ID | Platform | Test | Steps | Expected | Result | Notes |
+|---|---|---|---|---|---|---|
+| R-01 | H | Panel distance (bug 27) | Enter VR in Follow | Same height as before, about 20 cm further away. The first board is a little further back too (1.7 m). Note if it should move again | | |
+| R-02 | H | Wrist top row (bug 28) | Panel: Wrist. Pull the trigger on every colour disc, then **-** and **+**, from the angle you'd naturally use | Every press works first time: the colour changes, the pen size label changes | | |
+| R-03 | H | Erase board count (bug 29) | Pull the trigger on **Erase board (x3)** once, then again, then again | Label reads "Press 2 more", then "Press 1 more". Only the third pull erases | | |
+| R-04 | H | One pull, one step | Pull the trigger once on **+** and once on the Highlighter | Pen size goes up by 10 (not 20). Highlighter moves on one colour | | |
+| R-05 | H | Laser shows the reach (bug 30) | Reach: 20 cm. Point at a board across the room, then at the panel, then at the sky | On the board the laser stops at 20 cm. On the panel and the sky it goes the full length. Reach: Long: full length on the board too | | |
+| R-06 | H + V | One colour scheme (bug 31) | Look at every panel control | All buttons are teal (Erase board and Remove board red, grey when they can't be used). Colour discs show their own colour | | |
+| R-07 | H + V | Hover colour (bug 31) | Point at each button, the handle, Erase board and Remove board | Each turns the same orange. Colour discs don't change colour | | |
+| R-08 | H + V | Active modes (bug 31) | Pick the highlighter, then Eraser, Erase highlights, a colour. Go inside a 360 board | The box of the tool in use turns blue (the colour disc in use is bigger instead). Go inside is blue while you're inside | | |
+| R-09 | H + V | Press feedback (bug 31) | Press each control | It flashes white and grows for a moment, then goes back | | |
 
 ### P. Combined, multi-user and performance checks
 
@@ -503,4 +520,9 @@ Copy a row for each problem. Put the bug number in the test's Notes column.
 | 24 | Headset notes (V11) | H | Auto Place purpose unclear, seems to do nothing | Clear purpose | Press Auto place | Minor | Fixed, awaiting retest: it puts a board you moved back in its automatic place, and did nothing (grey) for boards never moved. Renamed **Reset position**, always pressable, says what it did. Retest with Q-14, K-10 |
 | 25 | Headset notes (V12) | H | Round +/- buttons have no visible effect | Clear purpose | Press + / - | Minor | Fixed, awaiting retest: they change the pen size (5 to 50 px). They now have a "Pen size N" label and a message. Retest with Q-15, D-06 |
 | 26 | V (screenshot) | V, H | Save all is greyed out with several boards in the room | Clear reason | Two boards, one with a temporary name | Minor | Fixed, awaiting retest: working as designed (Save all waits until every board has been named with its own Save), but it didn't say so. The button now reads "Save all (N unnamed)", its tooltip names them, and in VR pressing it explains. Retest with Q-16, Q-17 |
-| 27 | | | | | | | |
+| 27 | Q-01 | H | In Follow the panel is at a good height but too close | Further away | Enter VR | Minor | Fixed, awaiting retest: 75 cm ahead (was 55 cm); first board moved to 1.7 m. Retest with R-01 |
+| 28 | Q-09 | H | Wrist mode: the top row (colour discs and pen size - / +) doesn't respond to the trigger | Every control works | Panel: Wrist, press a colour | Major | Fixed, awaiting retest: at a slant the pointer hit the edge of the panel's backing plate first, and the press was lost. Controls now look past the plate (it still stops drawing on boards behind the panel). Retest with R-02 |
+| 29 | Q-09 (found in retest) | H | Erase board (x3) erases after two presses; the label said "Touch 2 more" | Three presses | Press Erase board | Major | Fixed, awaiting retest: some controllers report one trigger pull twice; panel controls now ignore a second press within 0.25 s. Label now says "Press N more". Retest with R-03, R-04 |
+| 30 | Q-12 | H | With Reach: 20 cm the laser still shows full length on a board | The laser shows the real reach on boards, full length elsewhere | Reach: 20 cm, point at a far board | Minor | Fixed, awaiting retest: the line stops at 20 cm when it points at a board further away. Retest with R-05 |
+| 31 | Q-09 (feature) | H, V | Button colours are mixed; no sign of the mode in use or of a press | One scheme, active colour, press feedback | Look at the panel | Feature | Fixed, awaiting retest: teal buttons (red for Erase / Remove board), one orange hover colour (not on colour discs), blue for the mode in use, a white flash and grow on every press. Retest with R-06 to R-09 |
+| 32 | | | | | | | |

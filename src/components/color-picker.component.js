@@ -1,4 +1,5 @@
-import { useMarker } from '../vr/session';
+import { useMarker, tools, onToolChange } from '../vr/session';
+import { createLook } from '../vr/button-look';
 import { watchTouch } from '../vr/reach';
 
 
@@ -21,16 +22,20 @@ AFRAME.registerComponent('color-picker', {
 
         this.el.sceneEl.addEventListener( 'mouseup', this.onMouseUp.bind(this), false );
 
-        this.el.setAttribute('material', {
-            color: this.data.color
-        })
+        // Keeps its own colour when pointed at; the disc in use is a bit bigger
+        // (see vr/button-look.js).
+        this.look = createLook(this.el, { color: this.data.color, keepColor: true, activeGrow: 1.25 });
         // Point at it and pull the trigger (see vr/reach.js).
         this.touch = watchTouch(this.el, (controller) => {
             controller.setAttribute('line', {
                 color: this.data.color
             });
             this.setColor()
+            this.look.flash();
         });
+        const same = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
+        onToolChange(() => this.look.setActive(!tools.clearing && !tools.highlight && same(tools.color, this.data.color)));
+        this.look.setActive(!tools.clearing && !tools.highlight && same(tools.color, this.data.color));
     },
     tick: function () {
         this.touch.tick();

@@ -60,26 +60,44 @@ export function onReachChange(fn) {
     listeners.push(fn);
 }
 
+// The tool panel's backing plate has this class. It stops drawing on a board
+// behind the panel, but panel controls look past it: pointing at a control
+// at a slant (the wrist panel's top row, say) could hit the plate's edge
+// first and the press was lost (round-2 notes, Q-09).
+export const SEE_THROUGH = 'panel-backing';
+
+function seeThrough(obj) {
+    const e = obj.el;
+    return !!(e && e.classList && e.classList.contains(SEE_THROUGH));
+}
+
 // The intersection between the controller `raycasterEl` and `el` if `el` (or
 // something inside it) is the first thing the controller's ray hits;
-// otherwise null.
-export function nearestHit(raycasterEl, el) {
+// otherwise null. With lookPastPanel, the panel's backing plate is skipped
+// (for panel controls).
+export function nearestHit(raycasterEl, el, lookPastPanel) {
     const rc = raycasterEl && raycasterEl.components && raycasterEl.components.raycaster;
     if (!rc || !rc.intersections) return null;
-    const first = rc.intersections.find((i) => i.object && i.object.el && i.object.el !== raycasterEl);
+    const first = rc.intersections.find((i) => i.object && i.object.el && i.object.el !== raycasterEl &&
+        !(lookPastPanel && seeThrough(i.object)));
     if (!first) return null;
     let e = first.object.el;
     while (e && e !== el) e = e.parentNode && e.parentNode.isEntity ? e.parentNode : null;
     return e === el ? first : null;
 }
 
-// For panel controls (colour cylinders, eraser, highlighter, Erase board).
-// Calls activate(controllerEl) when the trigger is pulled while `el` is the
-// nearest thing that controller's pointer hits. A pointer just passing over
-// or touching `el` does nothing. tick() is kept so callers don't change; it
-// does nothing now.
+// Ignore a second press of the same control within this many ms. Some
+// controllers report one trigger pull twice, which made Erase board (x3)
+// erase after two pulls (round-2 notes).
+export const PRESS_GAP_MS = 250;
+
+// For panel controls (colour discs, pen size, eraser, highlighter, Erase
+// board). Calls activate(controllerEl) when the trigger is pulled while `el`
+// is the nearest panel control that controller's pointer hits. A pointer
+// just passing over or touching `el` does nothing. tick() is kept so callers
+// don't change; it does nothing now.
 export function watchTouch(el, activate) {
-    const state = { pointers: [] };
+    const state = { pointers: [], last: 0 };
 
     el.addEventListener('raycaster-intersected', (evt) => {
         if (state.pointers.indexOf(evt.detail.el) === -1) state.pointers.push(evt.detail.el);
@@ -89,7 +107,11 @@ export function watchTouch(el, activate) {
     });
     document.querySelectorAll('.controller').forEach((controller) => {
         controller.addEventListener('triggerdown', () => {
-            if (state.pointers.indexOf(controller) !== -1 && nearestHit(controller, el)) activate(controller);
+            if (state.pointers.indexOf(controller) === -1 || !nearestHit(controller, el, true)) return;
+            const now = Date.now();
+            if (now - state.last < PRESS_GAP_MS) return;
+            state.last = now;
+            activate(controller);
         });
     });
 

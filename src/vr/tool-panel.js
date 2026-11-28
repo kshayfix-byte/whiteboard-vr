@@ -46,7 +46,7 @@ const MOVE_AWAY = 1.0;       // metres you can move away before it follows
 const GLIDE = 0.25;          // seconds, roughly, for it to glide into place
 
 // Where the panel goes in front of you (guesses, to tune on a headset).
-export const FORWARD = 0.55;     // metres ahead of your eyes (level), to the middle of the plate
+export const FORWARD = 0.75;     // metres ahead of your eyes (level), to the middle of the plate (was 0.55: too close, Q-01)
 export const DROP = 0.55;        // metres below your eyes
 export const TILT = 48;          // degrees the plate leans back (top away), so it faces your eyes
 const LOWEST = 0.55;             // the middle of the plate never goes lower than this above the floor
