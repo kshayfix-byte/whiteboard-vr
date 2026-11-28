@@ -18,12 +18,13 @@ const STYLE = `
 .rec-done { font-size: 13px; color: rgb(3,140,115); margin-left: auto; white-space: nowrap; }
 .rec-done a { color: inherit; }
 .rec-row > label { display: flex; align-items: center; gap: 12px; flex: 1 1 auto; min-width: 0; cursor: pointer; }
-.rec-name-input { font: bold 16px sans-serif; padding: 2px 6px; width: 100%; max-width: 320px; box-sizing: border-box; }
+.rec-row > label > div { flex: 1 1 auto; min-width: 0; }
+.rec-name-input { display: block; font: bold 16px sans-serif; padding: 3px 6px; width: 100%; min-width: 16em; max-width: 360px; box-sizing: border-box; }
 .rec-edit { flex: none; background: none; border: 1px solid transparent; border-radius: 8px; font-size: 18px; line-height: 1; padding: 4px 8px; cursor: pointer; color: #555; margin: 0; }
 .rec-edit:hover { border-color: orange; color: orange; }
 .rec-edit:disabled { visibility: hidden; }
-.rec-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; margin-top: 16px; }
-.rec-actions button { padding: 0.5em 0.9em; font: 14px sans-serif; background: white; color: #444; border: 2px solid gray; border-radius: 10px; cursor: pointer; margin: 0; }
+.rec-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.rec-actions button { flex: 1 1 auto; white-space: nowrap; padding: 0.5em 0.6em; font: 14px sans-serif; background: white; color: #444; border: 2px solid gray; border-radius: 10px; cursor: pointer; margin: 0; }
 .rec-actions button.primary { background: rgb(3,181,148); border-color: rgb(3,181,148); color: white; }
 .rec-actions button:disabled { opacity: 0.45; cursor: not-allowed; }
 `;

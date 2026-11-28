@@ -218,6 +218,7 @@ Run `npm test`. It needs Node 18 or newer (tested on Node 22) and takes about a 
 | F-15 | D | Rename with the pencil | Press **✎** on a row, type a new name, press Enter. Try Escape on another row, and clicking away from the box on a third | Enter and clicking away keep the new name in the list and tick the row; Escape keeps the old name. Clicking in the box doesn't tick or untick the row | | Bug 10 (new) |
 | F-16 | D | Pencil, then save or restore | Rename one row with ✎ and press Save selected. Rename another and press Restore and open | The first is saved under the new name. The second opens with the new name, still unsaved (italic, "Not saved yet" style label) | | Bugs 8 and 10 |
 | F-17 | D | Restore and open across rooms | Tick boards from two different rooms and press **Restore and open** | Both come back. Since only one room can be open, the page stays on the list and each row shows "Restored · Open" | | Bug 9 |
+| F-18 | D, M | Restore dialog layout | Open the restore dialog on a desktop and on a phone | Desktop: all five buttons on one row, filling the width with even gaps. Phone: buttons wrap into full-width rows with no large empty gaps | | Bug 12 |
 
 ### G. Naming and export inside a headset (PR #1)
 
@@ -456,4 +457,6 @@ Copy a row for each problem. Put the bug number in the test's Notes column.
 | 8 | C-06 (new feature) | D, V | The restore list can only bring boards back unsaved, so each one then needs its own Save | A way to save them straight away under their names | Crash the server with unsaved boards, open the app | Feature | Done: **Save selected** restores the ticked boards and saves them under the names shown. Retest with F-14, F-16 |
 | 9 | C-06 (wording) | D, V | "Restore selected" doesn't say the boards will open | A clearer label | Same as bug 8 | Minor | Done: renamed **Restore and open**. It now opens the restored board (or, for boards from several rooms, shows an Open link on each row). Retest with F-05, F-17 |
 | 10 | C-06 (new feature) | D, V | No way to rename a board in the restore list before saving or restoring | A small edit symbol on each row | Same as bug 8 | Feature | Done: **✎** on each row turns the name into a text box. The new name is used by Save selected, Restore and open and Restore all. Retest with F-15, F-16 |
-| 11 | | | | | | | |
+| 11 | F-15 | D, Safari | The rename box from ✎ is extremely narrow, so only part of one character shows while typing | The box is wide enough to see the name | Press ✎ on a row and type | Minor | Fixed: the name area now fills the row and the box is at least 16 characters wide. Retest with F-15 |
+| 12 | F-14 (layout) | D, M | The restore dialog's buttons sit to the right with empty space on the left, and Restore all wraps onto a line of its own | Buttons spread evenly across the dialog | Open the restore dialog | Minor | Fixed: the buttons stretch to share the full width; on a desktop they sit on one row, on a phone they wrap into even rows. Retest with F-18 |
+| 13 | | | | | | | |
