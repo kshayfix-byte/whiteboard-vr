@@ -390,23 +390,23 @@ Run `npm test`. It needs Node 18 or newer (tested on Node 22) and takes about a 
 
 | ID | Platform | Test | Steps | Expected | Result | Notes |
 |---|---|---|---|---|---|---|
-| O-01 | D | Even colour | Choose **Highlighter**, scribble over the same spot many times | Colour stays even, no darker blotches | | |
-| O-02 | D | Writing stays readable | Highlight over writing. Then write over a highlight | Writing is on top and readable both ways | | |
-| O-03 | D | Colours | Try each of the 5 swatches and the colour picker. Cross two colours | Colour changes. Crossing colours mix (yellow + pink = orange) | | |
-| O-04 | D | Pens remember settings | Set marker red 10 px, highlighter green 40 px, switch back and forth | Each pen keeps its own colour and size. Highlighter starts at 30 px | | |
-| O-05 | D | Eraser removes both | **Eraser** over writing and highlight | Both are rubbed out | | |
-| O-06 | D | Erase highlights | **Erase highlights** over writing and highlight | Highlight goes, writing stays | | |
-| O-07 | D | Colour while erasing | While erasing, pick a colour | Goes back to that pen | | |
-| O-08 | D | Sync and reload | Second window watches. Then reload both | Highlights and both erasers show live, and look the same after reload | | |
-| O-09 | S | Save and restore | Save and reload a board with highlights. Crash and restore an unsaved one | Highlights and highlight-erasing come back the same | | |
-| O-10 | D + H | Export | Export in 2D and VR | Highlights see-through in the PNG, writing on top | | |
-| O-11 | D + H | 360° join | Highlight and highlight-erase across the join (Turn ×4 in 2D, behind you in VR) | Even on both sides | | |
-| O-12 | D | Resize | Resize a highlighted board | Highlights move with everything else | | |
+| O-01 | D | Even colour | Choose **Highlighter**, scribble over the same spot many times | Colour stays even, no darker blotches | Pass | Pass (2026-11-28) |
+| O-02 | D | Writing stays readable | Highlight over writing. Then write over a highlight | Writing is on top and readable both ways | Pass | Pass (2026-11-28) |
+| O-03 | D | Colours | Try each of the 5 swatches and the colour picker. Cross two colours | Colour changes. Crossing colours mix (yellow + pink = orange) | Pass | Pass (2026-11-28) |
+| O-04 | D | Pens remember settings | Set marker red 10 px, highlighter green 40 px, switch back and forth | Each pen keeps its own colour and size. Highlighter starts at 30 px | Pass | Pass (2026-11-28) |
+| O-05 | D | Eraser removes both | **Eraser** over writing and highlight | Both are rubbed out | Pass | Pass (2026-11-28) |
+| O-06 | D | Erase highlights | **Erase highlights** over writing and highlight | Highlight goes, writing stays | Pass | Pass (2026-11-28) |
+| O-07 | D | Colour while erasing | While erasing, pick a colour | Goes back to that pen | Pass | Pass (2026-11-28) |
+| O-08 | D | Sync and reload | Second window watches. Then reload both | Highlights and both erasers show live, and look the same after reload | Pass | Pass (2026-11-28) |
+| O-09 | S | Save and restore | Save and reload a board with highlights. Crash and restore an unsaved one | Highlights and highlight-erasing come back the same | Pass | Pass (2026-11-28) |
+| O-10 | D + H | Export | Export in 2D and VR | Highlights see-through in the PNG, writing on top | Pass | Pass (2026-11-28) |
+| O-11 | D + H | 360° join | Highlight and highlight-erase across the join (Turn ×4 in 2D, behind you in VR) | Even on both sides | Pass | Pass (2026-11-28) |
+| O-12 | D | Resize | Resize a highlighted board | Highlights move with everything else | Pass | Pass (2026-11-28) |
 | O-13 | H | Pick up the highlighter | Pull the trigger on **Pen mode** (top left of the pen rows) again and again | Label goes Dry erase → Highlighter, yellow → green → pink → blue → orange → Dry erase. The pen dot shows each colour | Pass | . Changed by bug V7: trigger, not touch. Changed: the Highlighter box is now Pen mode (R-15). Pass by R-15 (2026-11-28) |
-| O-14 | H | Eraser boxes | Pull the trigger on **Eraser**, draw. Then on **Erase highlights**, draw. Then on **Eraser** again | Pink **Eraser** rubs out writing and highlights. Yellow **Erase highlights** rubs out highlights only. Pressing either again keeps that eraser. The box in use is a bit bigger | |. Changed by bug V8: two boxes instead of one that toggled |
+| O-14 | H | Eraser boxes | Pull the trigger on **Eraser**, draw. Then on **Erase highlights**, draw. Then on **Eraser** again | Pink **Eraser** rubs out writing and highlights. Yellow **Erase highlights** rubs out highlights only. Pressing either again keeps that eraser. The box in use is a bit bigger | Pass | . Changed by bug V8: two boxes instead of one that toggled. Pass (2026-11-28) |
 | O-15 | H | Colour cylinder | While highlighting, pull the trigger on a colour disc | Pen mode goes back to Dry erase and the marker uses that colour, at its old size | Pass | . Changed by bug V7: trigger, not touch. Pass by R-15 (2026-11-28) |
-| O-16 | H | +/- | Press +/- with marker, then highlighter | Only the pen in use changes | | |
-| O-17 | H | Boxes reachable | In Follow, Wrist and Stay panel modes | Highlighter and Eraser boxes can be reached | | |
+| O-16 | H | +/- | Press +/- with marker, then highlighter | Only the pen in use changes | Pass | Pass (2026-11-28) |
+| O-17 | H | Boxes reachable | In Follow, Wrist and Stay panel modes | Highlighter and Eraser boxes can be reached | Pass | Pass (2026-11-28) |
 
 ### Q. Headset fixes, round 1 (bugs V1 to V13, PR #19)
 
