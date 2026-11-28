@@ -15,10 +15,13 @@ AFRAME.registerComponent('room-number', {
 
         this.nameText = new MeshText2D(" ", { align: textAlign.left,  font: '40px Arial', fillStyle: this.data.color , antialias: true });
         this.nameText.scale.set(0.001,0.001,0.001);
-        this.nameText.position.set(0, -0.07, 0);
+        // Below the room line and a little in front of it: the two see-through
+        // text planes used to overlap at the same depth and flicker (bug 36).
+        this.nameText.position.set(0, -0.085, 0.003);
         group.add(this.nameText);
         this.el.sceneEl.addEventListener('board-renamed', (evt) => {
-            this.nameText.text = evt.detail.name || " ";
+            const text = evt.detail.name || " ";
+            if (this.nameText.text !== text) this.nameText.text = text; // redraw only on a change
         });
     },
     getParameterByName: function(name, url) {

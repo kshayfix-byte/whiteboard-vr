@@ -59,8 +59,8 @@ const MAX_HOLD = 3;
 
 // Wrist (guess, needs tuning on a headset): a smaller copy above the back of
 // the left hand, tilted towards the eyes.
-const WRIST_SCALE = 0.3;                             // ~35 x 20 cm
-const WRIST_OFFSET = { x: 0, y: 0.15, z: 0.02 };     // from the controller to the middle of the plate
+const WRIST_SCALE = 0.36;                            // ~42 x 25 cm (was 0.3: buttons hard to hit)
+const WRIST_OFFSET = { x: 0, y: 0.17, z: 0.02 };     // from the controller to the middle of the plate
 const WRIST_TILT = -40;                              // degrees, top tilted away from you
 
 function loadMode() {
@@ -246,7 +246,16 @@ export function createToolPanel(options) {
 
     function update(dt) {
         if (!scene.is('vr-mode')) return;
+        place(dt);
+        // Work out the panel's (and its buttons') world matrices now, so the
+        // controllers' pointers test against where the panel is this frame,
+        // not where it was drawn last frame. On the wrist, which moves all
+        // the time, the two could differ enough that you had to aim off the
+        // buttons (bug 37).
+        obj.updateMatrixWorld(true);
+    }
 
+    function place(dt) {
         if (carried) {
             followGrip();
             return;
