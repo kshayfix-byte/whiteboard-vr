@@ -132,7 +132,7 @@ Run `npm test`. It needs Node 18 or newer (tested on Node 22) and takes about a 
 | A-03 | D | Room code shown | Look at the toolbar | "Room: XXXXX" matches the address | Pass | |
 | A-04 | D | Join other room | Click **Join other room**, type `abcde`, OK | Page opens room `ABCDE` (upper case) | Pass | |
 | A-05 | D | Join cancelled | Click **Join other room**, press Cancel (and try empty) | Nothing changes | Pass | |
-| A-06 | D | VR link | Click **VR** | VR page opens for the same room (and same board, if not the first) | Fail | Bug 1: no way back to 2D from the VR page |
+| A-06 | D | VR link | Click **VR** | VR page opens for the same room (and same board, if not the first) | Pass | Bug 1: no way back to 2D from the VR page. Retest passed (2026-11-28) |
 | A-06b | V | Back to 2D | On the VR page, select the 2nd board and click **← 2D view** (top left). Then press the VR button (goes full screen), press Esc, and click **← 2D view** again | 2D page opens for the same room on the selected board. Esc leaves full screen first | Pass | |
 | A-07 | V | VR page with no room | Open `/vr.html` with no `?room=` | Address gets a random room code. The scene loads | Pass | |
 | A-08 | V | Room label in VR | Open `/vr.html?room=ABCDE` | The scene's room label shows ABCDE | Pass | |
@@ -188,19 +188,19 @@ Run `npm test`. It needs Node 18 or newer (tested on Node 22) and takes about a 
 
 | ID | Platform | Test | Steps | Expected | Result | Notes |
 |---|---|---|---|---|---|---|
-| E-01 | D | Temporary name | Open a new room | Toolbar shows `Whiteboard_####` in italics and "Not saved yet" | | |
-| E-02 | D | First Save asks for a name | Click **Save** | A box asks for a name, filled in with the temporary name | | |
-| E-03 | D | Cancel or empty name | Cancel the box. Then try Save with an empty name | Nothing is saved. Still "Not saved yet" | | |
-| E-04 | D | Save with a name | Save as "Planning" | Name shows (not italic) with "Saved at <time>" | | |
-| E-05 | D | Later Save | Draw, click Save | Saves straight away without asking for a name | | |
-| E-06 | D | Rename | **Rename** to "Planning v2" | New name shows here and in the other window. `/api/boards` shows the new name | | |
-| E-07 | D | Rename an unsaved board | On a never-saved board, Rename | Name changes but the board is still "Not saved yet", and Save all stays grey (Rename doesn't count as naming) | | |
+| E-01 | D | Temporary name | Open a new room | Toolbar shows `Whiteboard_####` in italics and "Not saved yet" | Pass | Pass (2026-11-28) |
+| E-02 | D | First Save asks for a name | Click **Save** | A box asks for a name, filled in with the temporary name | Pass | Pass (2026-11-28) |
+| E-03 | D | Cancel or empty name | Cancel the box. Then try Save with an empty name | Nothing is saved. Still "Not saved yet" | Pass | Pass (2026-11-28) |
+| E-04 | D | Save with a name | Save as "Planning" | Name shows (not italic) with "Saved at <time>" | Pass | Pass (2026-11-28) |
+| E-05 | D | Later Save | Draw, click Save | Saves straight away without asking for a name | Pass | Pass (2026-11-28) |
+| E-06 | D | Rename | **Rename** to "Planning v2" | New name shows here and in the other window. `/api/boards` shows the new name | Pass | Pass (2026-11-28) |
+| E-07 | D | Rename an unsaved board | On a never-saved board, Rename | Name changes but the board is still "Not saved yet", and Save all stays grey (Rename doesn't count as naming) | Pass | Pass (2026-11-28) |
 | E-08 | D | Save all greyed out | Room with two boards, only one saved | **Save all** is grey | Pass | Pass by Q-17 (2026-11-28) |
-| E-09 | D | Save all | Save each board once by itself, then draw on both, then **Save all** | Button is enabled. Both boards saved | | |
-| E-10 | D | Saved boards list | Click **Saved boards** | Lists every saved board with **Open** and **Open in VR** links. Links open the right room and board | | |
-| E-11 | D | Export image | Click **Export image** | PNG downloads named like `Planning-v2_2026-11-27_0710.png`, at the board's full size | | |
-| E-12 | V | VR page toolbar | In the VR page outside a headset, use **Save**, **Rename**, **Save all**, **Export image** in the top corner | Each works on the selected board | | |
-| E-13 | S | Name length | Try a name with 100 characters | Name is cut to 80 characters | | |
+| E-09 | D | Save all | Save each board once by itself, then draw on both, then **Save all** | Button is enabled. Both boards saved | Pass | Pass (2026-11-28) |
+| E-10 | D | Saved boards list | Click **Saved boards** | Lists every saved board with **Open** and **Open in VR** links. Links open the right room and board | Pass | Pass (2026-11-28) |
+| E-11 | D | Export image | Click **Export image** | PNG downloads named like `Planning-v2_2026-11-27_0710.png`, at the board's full size | Pass | Pass (2026-11-28) |
+| E-12 | V | VR page toolbar | In the VR page outside a headset, use **Save**, **Rename**, **Save all**, **Export image** in the top corner | Each works on the selected board | Pass | Pass (2026-11-28) |
+| E-13 | S | Name length | Try a name with 100 characters | Name is cut to 80 characters | Pass | Pass (2026-11-28) |
 
 ### F. Autosave, backup and restore (PR #1)
 
