@@ -2,6 +2,7 @@
 // in a row, see vr.js) to erase the selected board. A pointer passing over
 // it does nothing (see vr/reach.js).
 import { watchTouch } from '../vr/reach';
+import { createLook, COLORS } from '../vr/button-look';
 
 AFRAME.registerComponent('erase-all', {
     schema: {
@@ -12,19 +13,10 @@ AFRAME.registerComponent('erase-all', {
     },
     init: function () {
 
-        this.el.setAttribute('material', {
-            color: this.data.color
-        })
+        this.look = createLook(this.el, { color: COLORS.danger });
         this.touch = watchTouch(this.el, () => {
+            this.look.flash();
             this.el.sceneEl.emit('vr-action', { action: 'erase-all' });
-            this.el.setAttribute('material', {
-                color: 'pink'
-            })
-        });
-        this.el.addEventListener('raycaster-intersected-cleared', evt => {
-            this.el.setAttribute('material', {
-                color: this.data.color
-            })
         });
     },
     tick: function () {

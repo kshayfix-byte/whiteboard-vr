@@ -107,3 +107,21 @@ test('C-10 first board sits beyond the tool panel, above it', () => {
   const [wide] = layoutBoards([{ width: 4000, height: 2000 }]);
   assert.equal(wide.position[2], FIRST_Z, 'a big board no longer moves; the panel is not around it');
 });
+
+// ---- Headset feedback round 2 ----
+import { lookColor, lookGrow, COLORS, PRESS_GROW } from '../src/vr/button-look.js';
+
+test('C-11 panel controls share one colour scheme', () => {
+  const s = (o) => Object.assign({ hovered: false, active: false, enabled: true, flashing: false }, o);
+  const plain = { color: COLORS.normal };
+  assert.equal(lookColor(s({}), plain), COLORS.normal);
+  assert.equal(lookColor(s({ hovered: true }), plain), COLORS.hover, 'one hover colour');
+  assert.equal(lookColor(s({ hovered: true }), { color: COLORS.danger }), COLORS.hover, 'red buttons hover the same');
+  assert.equal(lookColor(s({ active: true }), plain), COLORS.active, 'a mode that is on');
+  assert.equal(lookColor(s({ active: true, hovered: true, flashing: true }), plain), COLORS.flash, 'a press shows over everything');
+  assert.equal(lookColor(s({ enabled: false, hovered: true }), plain), COLORS.disabled);
+  assert.equal(lookColor(s({ hovered: true, active: true }), { color: '#ED5564', keepColor: true }), '#ED5564', 'colour discs keep their colour');
+  assert.equal(lookGrow(s({ flashing: true }), plain), PRESS_GROW, 'grows when pressed');
+  assert.equal(lookGrow(s({}), plain), 1);
+  assert.equal(lookGrow(s({ active: true }), { activeGrow: 1.25 }), 1.25);
+});

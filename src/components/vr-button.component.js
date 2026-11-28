@@ -1,35 +1,28 @@
 import { nearestHit } from '../vr/reach';
+import { createLook, COLORS } from '../vr/button-look';
 
 // A button in the VR scene. Point at it and pull the trigger (or click it with
 // the mouse outside VR) and it emits `vr-action` on the scene with its action,
 // e.g. "save", "save-all" or "export". Set `enabled: false` to grey it out;
 // pressing a grey button emits `vr-action-disabled` instead, so the page can
-// say why it can't be used.
+// say why it can't be used. `active: true` shows it in the active colour
+// (a mode that is on). Colours and the press flash: see vr/button-look.js.
 AFRAME.registerComponent('vr-button', {
     schema: {
         action: { type: 'string' },
-        color: { type: 'color', default: '#03B594' },
+        color: { type: 'color', default: COLORS.normal },
         enabled: { type: 'boolean', default: true },
+        active: { type: 'boolean', default: false },
         cooldown: { type: 'int', default: 1500 } // ms between presses
     },
     init: function () {
         this.lastPress = 0;
-        this.hovered = false;
-
-        this.el.addEventListener('raycaster-intersected', evt => {
-            this.raycasterObj = evt.detail.el;
-            this.hovered = true;
-            this.paint();
-        });
-        this.el.addEventListener('raycaster-intersected-cleared', evt => {
-            this.raycasterObj = null;
-            this.hovered = false;
-            this.paint();
-        });
+        this.look = createLook(this.el, { color: this.data.color });
 
         document.querySelectorAll(".controller").forEach((controller) => {
             controller.addEventListener('triggerdown', evt => {
-                if (nearestHit(controller, this.el)) this.press();
+                // Look past the panel's backing plate (see vr/reach.js).
+                if (nearestHit(controller, this.el, true)) this.press();
             });
         });
 
@@ -49,26 +42,20 @@ AFRAME.registerComponent('vr-button', {
         });
     },
     update: function () {
-        this.paint();
-    },
-    paint: function () {
-        let color = this.data.color;
-        if (!this.data.enabled) color = '#7A7A7A';
-        else if (this.hovered) color = '#FFA500'; // orange while pointed at; the trigger presses it
-        this.el.setAttribute('material', { color: color, opacity: this.data.enabled ? 1 : 0.7, transparent: !this.data.enabled });
+        this.look.setColor(this.data.color);
+        this.look.setEnabled(this.data.enabled);
+        this.look.setActive(this.data.active);
     },
     press: function () {
-        if (!this.data.enabled) {
-            // A greyed-out button says why it can't be used (see vr.js), instead of doing nothing.
-            const now = Date.now();
-            if (now - this.lastPress < this.data.cooldown) return;
-            this.lastPress = now;
-            this.el.sceneEl.emit('vr-action-disabled', { action: this.data.action });
-            return;
-        }
         const now = Date.now();
         if (now - this.lastPress < this.data.cooldown) return; // one action per press
         this.lastPress = now;
+        if (!this.data.enabled) {
+            // A greyed-out button says why it can't be used (see vr.js), instead of doing nothing.
+            this.el.sceneEl.emit('vr-action-disabled', { action: this.data.action });
+            return;
+        }
+        this.look.flash();
         this.el.sceneEl.emit('vr-action', { action: this.data.action });
     }
 });

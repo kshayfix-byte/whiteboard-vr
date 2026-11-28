@@ -40,13 +40,13 @@
 const MODES = ['follow', 'wrist', 'stay'];
 const STORE_KEY = 'whiteboard-vr-panel';
 
-const TURN_AWAY = 65;        // degrees between where you look and the panel before it follows
-const TURN_WAIT = 0.6;       // ...for this many seconds
+const TURN_AWAY = 30;        // degrees between where you look and the panel before it follows (was 65)
+const TURN_WAIT = 0.3;       // ...for this many seconds (was 0.6)
 const MOVE_AWAY = 1.0;       // metres you can move away before it follows
 const GLIDE = 0.25;          // seconds, roughly, for it to glide into place
 
 // Where the panel goes in front of you (guesses, to tune on a headset).
-export const FORWARD = 0.55;     // metres ahead of your eyes (level), to the middle of the plate
+export const FORWARD = 0.75;     // metres ahead of your eyes (level), to the middle of the plate (was 0.55: too close, Q-01)
 export const DROP = 0.55;        // metres below your eyes
 export const TILT = 48;          // degrees the plate leans back (top away), so it faces your eyes
 const LOWEST = 0.55;             // the middle of the plate never goes lower than this above the floor
@@ -302,10 +302,16 @@ export function createToolPanel(options) {
         return false;
     }
 
+    // A controller is aiming at a panel control (not just the backing
+    // plate, which a resting controller points at most of the time and
+    // which kept the panel from ever following your turns: bug 32).
     function pointingAtPanel() {
         return controllers.some((controller) => {
             const rc = controller.components.raycaster;
-            return !!(rc && rc.intersectedEls && rc.intersectedEls.some(onPanel));
+            if (!rc || !rc.intersections) return false;
+            const first = rc.intersections.find((i) => i.object && i.object.el && i.object.el !== controller &&
+                !i.object.el.classList.contains('panel-backing'));
+            return !!first && first.object.el.id !== 'vr-panel-handle' && onPanel(first.object.el);
         });
     }
 

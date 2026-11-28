@@ -5,7 +5,8 @@
 // cylinders go back to the marker, and the eraser box to the eraser.
 import { tools, useHighlighter, highlighterColor, onToolChange } from '../vr/session';
 import { watchTouch } from '../vr/reach';
-import { HIGHLIGHT_COLORS } from '../board-client';
+import { createLook } from '../vr/button-look';
+import { HIGHLIGHT_COLORS, HIGHLIGHT_NAMES } from '../board-client';
 
 AFRAME.registerComponent('highlighter-picker', {
     init: function () {
@@ -16,8 +17,10 @@ AFRAME.registerComponent('highlighter-picker', {
         this.renderer = this.el.sceneEl.renderer;
         this.el.sceneEl.addEventListener('mouseup', this.onMouseUp.bind(this), false);
 
+        this.look = createLook(this.el);
         this.touch = watchTouch(this.el, (controller) => {
             this.pick();
+            this.look.flash();
             controller.setAttribute('line', { color: tools.color });
         });
         this.show();
@@ -34,14 +37,13 @@ AFRAME.registerComponent('highlighter-picker', {
             useHighlighter();
         }
     },
-    // Box colour = the highlighter's colour; a bit more solid while in use.
+    // Active colour while the highlighter is in use. Its colour shows on the
+    // pen dot and the pointer line, and in the label.
     show: function () {
-        const active = tools.highlight && !tools.clearing;
-        this.el.setAttribute('material', {
-            color: highlighterColor(),
-            transparent: true,
-            opacity: active ? 0.85 : 0.5
-        });
+        this.look.setActive(tools.highlight && !tools.clearing);
+        const label = document.getElementById('vr-highlighter-label');
+        const name = HIGHLIGHT_NAMES[HIGHLIGHT_COLORS.indexOf(highlighterColor())];
+        if (label) label.setAttribute('value', name ? 'Highlight: ' + name : 'Highlighter');
     },
     onMouseUp: function (evt) {
         if (!this.camera || !this.renderer) return;

@@ -10,6 +10,7 @@ require('./components/erase-all.component');
 require('./components/intersection-visual.component');
 require('./components/room-number.component');
 require('./components/vr-button.component');
+require('./components/reach-line.component');
 import { createSaveControls } from './save-controls';
 import { createRecoveryUI } from './recovery-ui';
 import { normalizeRoom, BOARD_SIZES, describeSize, presetFor, isWrapBoard, describeWrapSize } from './board-client';
@@ -23,6 +24,7 @@ import { createLocomotion } from './vr/locomotion';
 import { reachMode, setReachMode, onReachChange } from './vr/reach';
 import { createToolPanel, describePanelMode } from './vr/tool-panel';
 import { createMultiClick } from './triple-click';
+import { createLook } from './vr/button-look';
 
 const FRAME_COLOR = '#acacac';
 const SELECTED_FRAME_COLOR = '#FFA500';
@@ -344,7 +346,7 @@ window.addEventListener('DOMContentLoaded', () => {
     });
     removeBoardButton.addEventListener('click', () => { if (selectedBoard()) removeGuard.press(selectedBoard()); });
 
-    // ---- Erase board: three touches in a row, like Remove (bug 4) ----
+    // ---- Erase board: three presses in a row, like Remove (bug 4) ----
     const eraseLabel = document.getElementById('vr-erase-all-label');
     const eraseButton = document.getElementById('vr-erase-board'); // desktop toolbar
     const ERASE_TEXT = 'Erase board (x3)';
@@ -352,8 +354,8 @@ window.addEventListener('DOMContentLoaded', () => {
         count: 3,
         onProgress: (left, id) => {
             const info = roomBoards.find((b) => b.id === id);
-            showInScene('Erase \u201c' + shortName(info ? info.name : '') + '\u201d? Touch ' + left + ' more time' + (left === 1 ? '' : 's'));
-            if (eraseLabel) eraseLabel.setAttribute('value', 'Touch ' + left + ' more');
+            showInScene('Erase \u201c' + shortName(info ? info.name : '') + '\u201d? Press ' + left + ' more time' + (left === 1 ? '' : 's'));
+            if (eraseLabel) eraseLabel.setAttribute('value', 'Press ' + left + ' more');
             eraseButton.classList.add('arming');
             eraseButton.textContent = 'Click ' + left + ' more time' + (left === 1 ? '' : 's') + ' to erase';
         },
@@ -653,6 +655,9 @@ window.addEventListener('DOMContentLoaded', () => {
     }
     toolPanel.onModeChange(paintPanel);
     paintPanel();
+    // The grab handle turns orange when pointed at, like every control.
+    const handle = document.getElementById('vr-panel-handle');
+    if (handle) createLook(handle, { color: '#4A5560' });
 
     // ---- Going into (and out of) a 360-degree board ----
     const insideLabel = document.getElementById('vr-inside-label');
@@ -692,7 +697,7 @@ window.addEventListener('DOMContentLoaded', () => {
         const inside = !!entry && headInside(entry);
         const text = inside ? 'Step out' : 'Go inside';
         if (insideLabel) insideLabel.setAttribute('value', text);
-        if (insideBox) insideBox.setAttribute('vr-button', 'enabled', !!entry);
+        if (insideBox) insideBox.setAttribute('vr-button', { enabled: !!entry, active: inside });
         if (insideButton) {
             insideButton.disabled = !entry;
             insideButton.textContent = entry ? text + ' (360\u00b0 board)' : 'Go inside';

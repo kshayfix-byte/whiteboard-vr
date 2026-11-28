@@ -45,24 +45,32 @@ AFRAME.registerComponent('texture-painter', {
         this.el.sceneEl.addEventListener( 'mousedown', this.onMouseDown.bind(this), false );
         this.el.sceneEl.addEventListener( 'touchstart', this.onMouseDown.bind(this), false );
 
+        // Each controller (and the mouse) draws its own stroke: where it last
+        // drew on this board, or null when it isn't drawing here. A pen that
+        // leaves the board ends its stroke, and coming back starts a new one,
+        // so no straight line joins the two spots (bug 34). Before, both
+        // controllers shared one stroke and one trigger flag.
+        this.pens = new Map();
+        this.pointers = new Set();   // controllers whose ray touches this board
+        this.down = new Set();       // controllers with the trigger held
         this.el.addEventListener('raycaster-intersected', evt => {
-            this.raycasterObj = evt.detail.el;
+            this.pointers.add(evt.detail.el);
             this.hoverSelected = false; // tick() selects once the hit is confirmed
         });
         this.el.addEventListener('raycaster-intersected-cleared', evt => {
-            if (this.raycasterObj && evt.detail.el !== this.raycasterObj) return; // the other controller
-            this.lastX = null;
-            this.lastY = null;
-            this.raycasterObj = null;
+            this.pointers.delete(evt.detail.el);
+            this.endStroke(evt.detail.el);
         });
 
         var controllers = document.querySelectorAll(".controller");
         controllers.forEach((controller) => {
             controller.addEventListener('triggerdown', evt => {
-                this.triggerdown = true;
+                this.down.add(controller);
+                this.endStroke(controller); // a new pull is a new stroke
             });
             controller.addEventListener('triggerup', evt => {
-                this.triggerdown = false;
+                this.down.delete(controller);
+                this.endStroke(controller);
             });
         })
         
@@ -155,15 +163,13 @@ AFRAME.registerComponent('texture-painter', {
     resize: function (width, height) {
         if (this.surface) return; // 360-degree boards have a fixed size
         if (!sizeCanvas(this._canvas, width, height)) return;
-        this.lastX = null;
-        this.lastY = null;
+        this.pens.clear();
         clearCanvas(this._context2D, this._canvas, this.background);
         this.parentTexture.dispose(); // the GPU copy has the old size
         this.parentTexture.needsUpdate = true;
     },
     loadState: function (state) {
-        this.lastX = null;
-        this.lastY = null;
+        this.pens.clear();
         this.background = state.background || DEFAULT_BACKGROUND;
         if (this.surface) {
             this.surface.replay(state);
@@ -207,15 +213,26 @@ AFRAME.registerComponent('texture-painter', {
         clearCanvas(this._context2D, this._canvas, this.background);
         this.parentTexture.needsUpdate = true;
     },
+    // Where `key` (a controller, or 'mouse') last drew on this board.
+    pen: function (key) {
+        if (!this.pens.has(key)) this.pens.set(key, { lastX: null, lastY: null });
+        return this.pens.get(key);
+    },
+    endStroke: function (key) {
+        const p = this.pens.get(key);
+        if (p) { p.lastX = null; p.lastY = null; }
+    },
     tick: function () {
-        if (!this.raycasterObj) { return; }  // Not intersecting.
-    
+        if (!this.pointers.size) { this.hoverSelected = false; return; }  // Not intersecting.
+        this.pointers.forEach((controller) => this.tickPen(controller));
+    },
+    tickPen: function (controller) {
+        const pen = this.pen(controller);
         // Only the first thing the pointer hits counts, so a long pointer
         // can't draw on a board hidden behind this one (or behind a button).
-        let intersection = nearestHit(this.raycasterObj, this.el);
+        let intersection = nearestHit(controller, this.el);
         if (!intersection) {
-            this.lastX = null;
-            this.lastY = null;
+            this.endStroke(controller);
             return;
         }
         // Pointing a controller at a board selects it. (Checked here rather
@@ -226,39 +243,27 @@ AFRAME.registerComponent('texture-painter', {
             selectBoard(this.boardId);
         }
         const point = this.pointFromHit(intersection);
-        if (!point) {
-            // e.g. the outside of a 360-degree board: no drawing there
-            this.lastX = null;
-            this.lastY = null;
+        // No point: e.g. the outside of a 360-degree board. Out of reach: the
+        // Reach setting only limits drawing (bug V9). Either way the stroke ends.
+        if (!point || !this.down.has(controller) || !canDrawAt(intersection.distance)) {
+            this.endStroke(controller);
             return;
         }
-        // The Reach setting only limits drawing (bug V9): with "20 cm", a
-        // board further away is selected but not drawn on.
-        if (this.triggerdown && !canDrawAt(intersection.distance)) {
-            this.lastX = null;
-            this.lastY = null;
-            return;
+        selectBoard(this.boardId);
+        var x = this.wrapX(point.x, pen);
+        var y = point.y;
+        if (pen.lastX != null && intersection.distance > STEADY_FROM) {
+            var follow = Math.max(MIN_FOLLOW, STEADY_FROM / intersection.distance);
+            x = pen.lastX + (x - pen.lastX) * follow;
+            y = pen.lastY + (y - pen.lastY) * follow;
         }
-        if (this.triggerdown) {
-            selectBoard(this.boardId);
-            var x = this.wrapX(point.x);
-            var y = point.y;
-            if (this.lastX != null && intersection.distance > STEADY_FROM) {
-                var follow = Math.max(MIN_FOLLOW, STEADY_FROM / intersection.distance);
-                x = this.lastX + (x - this.lastX) * follow;
-                y = this.lastY + (y - this.lastY) * follow;
-            }
-            this._draw(x, y);
-            this.lastX = x;
-            this.lastY = y;
-        } else {
-            this.lastX = null;
-            this.lastY = null;
-        }
+        this._draw(x, y, pen);
+        pen.lastX = x;
+        pen.lastY = y;
     },
     // On a 360-degree board, keep x next to the stroke's last point (see unwrapX).
-    wrapX: function (x) {
-        return this.surface ? unwrapX(x, this.lastX, this.surface.width) : x;
+    wrapX: function (x, pen) {
+        return this.surface ? unwrapX(x, pen && pen.lastX, this.surface.width) : x;
     },
     cameraSetActive: function() {
         this.camera = this.el.sceneEl.camera;
@@ -285,13 +290,15 @@ AFRAME.registerComponent('texture-painter', {
         socket.emit('eraseAll', eraseAllObject);
         this.eraseAllRemote(eraseAllObject);
     },
-    _draw: function (x, y) {
+    // A line from where `pen` last drew to (x, y). The pen's first point
+    // only starts the stroke.
+    _draw: function (x, y, pen) {
         // Don't draw until the saved board has loaded, so nothing gets painted over.
-        if (this.loaded && this.lastX != null && this.lastY != null) {
+        if (this.loaded && pen.lastX != null && pen.lastY != null) {
             var drawObject= {};
             drawObject.id = this.id;
-            drawObject.lastX = this.lastX;
-            drawObject.lastY = this.lastY;
+            drawObject.lastX = pen.lastX;
+            drawObject.lastY = pen.lastY;
             drawObject.x = x;
             drawObject.y = y;
             drawObject.color = tools.color;
@@ -304,9 +311,9 @@ AFRAME.registerComponent('texture-painter', {
             drawObject.bh = this.boardHeight();
             socket.emit('draw', drawObject);
             this.drawRemote(drawObject);
-            this.lastX = x;
-            this.lastY = y;
         }
+        pen.lastX = x;
+        pen.lastY = y;
     },
 
     onMouseMove: function ( evt ) {
@@ -319,8 +326,15 @@ AFRAME.registerComponent('texture-painter', {
         var intersects = this.getIntersects( this.onClickPosition, [this.el.getObject3D('mesh')] );
 
         var point = intersects.length > 0 && !this.panelInFront(intersects[ 0 ]) && this.pointFromHit(intersects[ 0 ]);
-        if ( point ) {
-            this._draw( this.wrapX(point.x), point.y );
+        var pen = this.pen('mouse');
+        if ( !point ) {
+            // Off the board: the stroke ends here (bug 34).
+            pen.lastX = null;
+            pen.lastY = null;
+        } else if ( this.mouseHeld ) {
+            // Still holding the button: draw, or start a new stroke if the
+            // mouse just came back onto the board.
+            this._draw( this.wrapX(point.x, pen), point.y, pen );
         }
 
     },
@@ -338,15 +352,17 @@ AFRAME.registerComponent('texture-painter', {
             selectBoard(this.boardId);
             this.disableLookControls();
 
-            this.lastX = point.x;
-            this.lastY = point.y;
+            this.mouseHeld = true;
+            var pen = this.pen('mouse');
+            pen.lastX = point.x;
+            pen.lastY = point.y;
 
         }
     },
     onMouseUp: function (evt) {
         //evt.preventDefault();
-        this.lastX = null;
-        this.lastY = null;
+        this.endStroke('mouse');
+        this.mouseHeld = false;
 
         this.enableLookControls();
     },
