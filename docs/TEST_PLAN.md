@@ -242,20 +242,20 @@ Run `npm test`. It needs Node 18 or newer (tested on Node 22) and takes about a 
 
 | ID | Platform | Test | Steps | Expected | Result | Notes |
 |---|---|---|---|---|---|---|
-| H-01 | D | Add whiteboard | Click **+ Add whiteboard** | New tab with a temporary name appears in this and the other window | | |
-| H-02 | D | Tabs | Switch tabs | Board changes. Italic = temporary name, red dot = unsaved changes | | |
-| H-03 | D | Address keeps the board | Switch to the 2nd tab, copy the address, open it in a new window | Opens on the same board (`&board=<id>`) | | |
-| H-04 | D | Tools act on the open tab | On tab 2: Save, Rename, Export, Erase | Only tab 2 is affected | | |
-| H-05 | D | Shared pen settings | Change colour and size, switch tabs | Same colour and size on every board | | |
-| H-06 | M | Draw on a later tab | On a phone, open tab 2 and draw | Drawing works | | |
+| H-01 | D | Add whiteboard | Click **+ Add whiteboard** | New tab with a temporary name appears in this and the other window | Pass | Pass (2026-11-28) |
+| H-02 | D | Tabs | Switch tabs | Board changes. Italic = temporary name, red dot = unsaved changes | Pass | Pass (2026-11-28) |
+| H-03 | D | Address keeps the board | Switch to the 2nd tab, copy the address, open it in a new window | Opens on the same board (`&board=<id>`) | Pass | Pass (2026-11-28) |
+| H-04 | D | Tools act on the open tab | On tab 2: Save, Rename, Export, Erase | Only tab 2 is affected | Pass | Pass (2026-11-28) |
+| H-05 | D | Shared pen settings | Change colour and size, switch tabs | Same colour and size on every board | Pass | Pass (2026-11-28) |
+| H-06 | M | Draw on a later tab | On a phone, open tab 2 and draw | Drawing works | Pass | Pass (2026-11-28) |
 | H-07 | S | 50 board limit | Add boards until 50 | The 51st is refused with a message | | |
-| H-08 | V | Boards in the VR scene | Make 4 boards, open VR page | First board in front. Others on a ring: left, right, then behind | | |
-| H-09 | V | Selected board | Point at (or draw on) a board | Orange frame and `>` in its name tag. "Selected: name (2 of 4)" shows | | |
-| H-10 | V | Drop-down | Outside a headset, pick a board in the top corner list | Selection changes | | |
-| H-11 | H | Add and Next board in VR | Trigger **Add whiteboard**, then **Next board** | New board appears on the ring. Next cycles the orange selection | | |
-| H-12 | H | Side and back boards | Walk to the side and back boards and draw | They can be reached and drawn on. Lighting looks fine | | |
-| H-13 | D + V | Sync both ways | Add, draw, rename in 2D and VR | Every change shows on the other page. Tab names update | | |
-| H-14 | S | Restart keeps order | Make 3 named boards, restart the server | All 3 come back in the same order with names | | |
+| H-08 | V | Boards in the VR scene | Make 4 boards, open VR page | First board in front. Others on a ring: left, right, then behind | Pass | Pass (2026-11-28) |
+| H-09 | V | Selected board | Point at (or draw on) a board | Orange frame and `>` in its name tag. "Selected: name (2 of 4)" shows | Pass | Pass (2026-11-28) |
+| H-10 | V | Drop-down | Outside a headset, pick a board in the top corner list | Selection changes | Pass | Pass (2026-11-28) |
+| H-11 | H | Add and Next board in VR | Trigger **Add whiteboard**, then **Next board** | New board appears on the ring. Next cycles the orange selection | Pass | Pass (2026-11-28) |
+| H-12 | H | Side and back boards | Walk to the side and back boards and draw | They can be reached and drawn on. Lighting looks fine | Pass | Pass (2026-11-28) |
+| H-13 | D + V | Sync both ways | Add, draw, rename in 2D and VR | Every change shows on the other page. Tab names update | Pass | Pass (2026-11-28) |
+| H-14 | S | Restart keeps order | Make 3 named boards, restart the server | All 3 come back in the same order with names | Pass | Pass (2026-11-28) |
 
 ### I. Remove whiteboard (PR #2 / #3)
 
