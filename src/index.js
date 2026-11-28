@@ -496,6 +496,18 @@ document.querySelectorAll('input[name="tool"]').forEach((r) => {
 showTool();
 
 window.addEventListener('resize', onResize)
+const boardTabsEl = document.getElementById('board-tabs');
+const toolbarEl = document.querySelector('.toolbar');
+// Re-fit when the toolbar or tab bar changes height (wrapping, labels).
+if (window.ResizeObserver) {
+    let lastHeights = '';
+    const ro = new ResizeObserver(() => {
+        const h = boardTabsEl.offsetHeight + ',' + toolbarEl.offsetHeight;
+        if (h !== lastHeights) { lastHeights = h; onResize(); }
+    });
+    ro.observe(boardTabsEl);
+    ro.observe(toolbarEl);
+}
 
 // Zoom: 1 fits the whole board on screen (as before); bigger values make the
 // board larger than the screen and the page scrolls.
@@ -508,11 +520,22 @@ const zoomFitButton = document.getElementById('zoom-fit');
 function onResize() {
     if (!canvas) return;
     const ratio = canvas.width / canvas.height; // 1.5 for the standard board
-    // Size that fits the screen (the original behaviour).
+    // Size that fits the screen: as wide as the window allows, but never
+    // taller than the space between the tab bar and the toolbar, so the
+    // bottom of the board isn't hidden behind the toolbar (bug 6, iPad
+    // landscape). The toolbar's height changes with the window width, so it
+    // is measured rather than guessed.
+    const tabsHeight = boardTabsEl ? boardTabsEl.offsetHeight : 0;
+    const toolbarHeight = toolbarEl ? toolbarEl.offsetHeight : 0;
+    const frame = 2 * 20 + 2 * 12 + 8; // canvas margins, grey frame, a little air
+    const availHeight = Math.max(100, window.innerHeight - tabsHeight - toolbarHeight - frame);
+    // On very short screens (a phone on its side) the board can't fit; leave
+    // room below it so it can always be scrolled up above the toolbar.
+    document.body.style.paddingBottom = toolbarHeight + 'px';
     let fitWidth = document.documentElement.clientWidth * 0.94;
     let fitHeight = fitWidth / ratio;
-    if (fitHeight > window.innerHeight * 0.9) {
-        fitHeight = Math.max(100, window.innerHeight - 150);
+    if (fitHeight > availHeight) {
+        fitHeight = availHeight;
         fitWidth = fitHeight * ratio;
     }
     // Stop zooming in at 2 screen pixels per board pixel.
@@ -733,9 +756,9 @@ boardsOverlay.addEventListener('click', (e) => {
     }
 });
 
-// ---- Erase whole board: needs three clicks in a row, like Remove ----
+// ---- Erase board: needs three clicks in a row, like Remove ----
 const eraseAll = document.getElementById('erase-all');
-const ERASE_LABEL = 'Erase whole board';
+const ERASE_LABEL = 'Erase board';
 const eraseGuard = createMultiClick({
     count: 3,
     onProgress: (left) => {
@@ -792,7 +815,6 @@ overlay.addEventListener('click', (e) => {
 // The extra toolbar buttons open in a pop-up above the toolbar. On wider
 // screens the menu button is hidden and the buttons stay in the toolbar.
 const optionsButton = document.getElementById('options-button');
-const toolbarEl = document.querySelector('.toolbar');
 function setOptionsOpen(open) {
     document.body.classList.toggle('options-open', open);
     optionsButton.setAttribute('aria-expanded', open ? 'true' : 'false');

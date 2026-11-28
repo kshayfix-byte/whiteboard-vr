@@ -23,7 +23,7 @@
       #vr-board-name.temporary { font-style: italic; color: #666; }
       #vr-board-state { font-size: 12px; color: gray; }
       #vr-toolbar select { padding: 0.45em 0.6em; font: 14px sans-serif; border: 2px solid gray; border-radius: 10px; background: white; max-width: 220px; }
-      #vr-toolbar button.arming, #vr-toolbar button.arming:hover { background: #c0392b; border-color: #c0392b; color: white; }
+      #vr-toolbar button.arming, #vr-toolbar button.arming:hover, #vr-toolbar button.erase-board.arming { background: #c0392b; border-color: #c0392b; color: white; }
       #vr-save-status { background: rgba(255,255,255,0.85); border-radius: 10px; padding: 0.3em 0.6em; color: rgb(3, 140, 115); }
       #vr-save-status:empty { display: none; }
       #vr-save-status.error { color: #c0392b; }
@@ -48,6 +48,7 @@
       <button id="vr-go-inside" disabled>Go inside</button>
       <select id="vr-board-size" title="Size of the selected whiteboard (changes it for everyone)"></select>
       <button id="vr-move-toggle" title="Move or turn the selected whiteboard in the room">Move board</button>
+      <button id="vr-erase-board" class="erase-board" title="Clears the selected whiteboard for everyone. Click three times in a row.">Erase board</button>
       <button id="vr-remove-board" title="Removes the selected whiteboard for everyone. Click three times in a row.">Remove whiteboard</button>
       <button id="vr-save">Save</button>
       <button id="vr-rename">Rename</button>
@@ -107,8 +108,8 @@
         <a-text value="Highlighter" color="black" position="0.82 0.68 -0.6" width="1.2"></a-text>
         <a-box class="hittable" highlighter-picker position="0.9 0.58 -0.6" scale="0.1 0.1 0.1"></a-box>
 
-        <!-- Erase All needs three touches (or trigger presses) in a row, each within 3 s. -->
-        <a-text id="vr-erase-all-label" value="Erase All (x3)" color="red" position="0.8 1.18 -0.6" width="1.2"></a-text>
+        <!-- Erase board needs three touches (or trigger presses) in a row, each within 3 s. -->
+        <a-text id="vr-erase-all-label" value="Erase board (x3)" color="red" position="0.8 1.18 -0.6" width="1.2"></a-text>
         <a-box class="hittable" erase-all material="color: red; roughness: 0.1; metalness: 0.7" position="0.9 1.1 -0.6" scale="0.05 0.05 0.05"></a-box>
 
         <a-entity position="-0.7 1.7 -0.6" room-number></a-entity>
