@@ -137,20 +137,18 @@ Closed the list by accident? Press **Restore unsaved** in the toolbar to bring i
 
 ## Roadmap
 
-- send current draw state if a new user joins
-- ~~change brush size in VR~~
-- undo/redo
-- ~~erase~~
-- polish UI for brush size and eraser in VR and 2D
-- audio chat
-- display number of people in a room
-- display user names
-- add images
-- save board
-- endless scrolling
-- permission system: view/edit or view
-- add text box
+- On-whiteboard text boxes, with an on-screen keyboard in VR (also for naming whiteboards without leaving VR)
 - Pen/Eraser hand models in VR
+- Undo button
+- Help and usage guide on the "Welcome to Whiteboard VR!" page, plus a Help button in the normal whiteboard view that opens the same guide
+- "Don't show again" checkbox on the welcome pop-up, so it stops appearing on that computer
+- Restore unsaved whiteboards pop-up: give the "Not now" button a different colour so it stands out
+- Remember your settings between visits (default reach, smooth or teleport movement)
+- Show the selected whiteboard with a bright border (for example bright blue) that flashes briefly when you select it, instead of the "Selected: ..." text
+- New panel mode that arranges the controls around the border of the selected whiteboard
+- Room saving: save a room and reopen it later, with every whiteboard back in the same 3D position
+- Non-VR 3D mode (desktop and mobile): move the panel controls and whiteboards directly with mouse or touch
+- Infinite / "unnatural" whiteboard mode
 
 ## Project structure
 
