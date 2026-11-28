@@ -171,3 +171,27 @@ test('S-09 REST: saved boards list, room info, recovery', async () => {
   const rec = await get('/api/recovery');
   assert.ok(Array.isArray(rec.json.items));
 });
+
+test('S-10 restore with a new name, and restore-and-save', async () => {
+  const post = (p, body) => new Promise((resolve, reject) => {
+    const data = JSON.stringify(body);
+    const req = http.request(url + p, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) } }, (res) => {
+      let out = '';
+      res.on('data', (d) => { out += d; });
+      res.on('end', () => resolve(JSON.parse(out)));
+    });
+    req.on('error', reject);
+    req.end(data);
+  });
+  const entry = (room) => ({ version: 2, room, boards: { main: { name: 'Whiteboard_1234', ops: [{ type: 'stroke', x0: 1, y0: 1, x1: 2, y1: 2, size: 5, color: '#000' }] } } });
+  fs.writeFileSync(path.join(dataDir, 'recovery', 'RECX.main.1.json'), JSON.stringify(entry('RECX')));
+  fs.writeFileSync(path.join(dataDir, 'recovery', 'RECY.main.1.json'), JSON.stringify(entry('RECY')));
+  const renamed = await post('/api/recovery/restore', { ids: ['RECX.main.1'], names: { 'RECX.main.1': 'Sketches' } });
+  assert.equal(renamed.results[0].name, 'Sketches');
+  assert.equal(store.findBoard('RECX', 'main').named, false, 'renamed but not saved');
+  const saved = await post('/api/recovery/restore', { ids: ['RECY.main.1'], save: true });
+  assert.equal(saved.results[0].saved, true);
+  assert.equal(saved.results[0].name, 'Whiteboard_1234', 'saved under the name shown');
+  assert.equal(store.findBoard('RECY', 'main').named, true);
+  assert.ok(fs.existsSync(path.join(dataDir, 'RECY.json')));
+});

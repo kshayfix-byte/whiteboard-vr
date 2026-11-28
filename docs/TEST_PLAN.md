@@ -156,13 +156,13 @@ Run `npm test`. It needs Node 18 or newer (tested on Node 22) and takes about a 
 
 | ID | Platform | Test | Steps | Expected | Result | Notes |
 |---|---|---|---|---|---|---|
-| C-01 | D | Two people, same room | Open the same room in two windows. Draw in one | The other window shows the line straight away | | |
-| C-02 | D | Different rooms stay separate | Open room A and room B. Draw in A | Room B doesn't change | | |
-| C-03 | D | Late joiner | Draw in a room, then open the same room in a new window | The new window shows everything already drawn (new: the original showed a blank board) | | |
-| C-04 | D | Erase board syncs | Erase the board in one window | The other window is cleared too | | |
-| C-05 | D + V | 2D to VR and back | Open the same room in 2D and in the VR page. Draw in each | Each stroke appears on the other | | |
-| C-06 | D | Server restart | Draw, stop the server (Ctrl+C) and start it again | Pages reconnect by themselves. Unsaved drawing is offered for restore (see F) | | |
-| C-07 | D + M | Phone and desktop | Draw on the phone and the desktop in the same room | Both see each other's lines | | |
+| C-01 | D | Two people, same room | Open the same room in two windows. Draw in one | The other window shows the line straight away | Pass | |
+| C-02 | D | Different rooms stay separate | Open room A and room B. Draw in A | Room B doesn't change | Pass | |
+| C-03 | D | Late joiner | Draw in a room, then open the same room in a new window | The new window shows everything already drawn (new: the original showed a blank board) | Pass | |
+| C-04 | D | Erase board syncs | Erase the board in one window | The other window is cleared too | Pass | |
+| C-05 | D + V | 2D to VR and back | Open the same room in 2D and in the VR page. Draw in each | Each stroke appears on the other | Pass | |
+| C-06 | D | Server restart | Draw, stop the server (Ctrl+C) and start it again | Pages reconnect by themselves. Unsaved drawing is offered for restore (see F) | Pass | Works as designed. Restore dialog improvements: bugs 8-10, retest with F-14 to F-17 |
+| C-07 | D + M | Phone and desktop | Draw on the phone and the desktop in the same room | Both see each other's lines | Pass | |
 
 ### D. VR basics (original)
 
@@ -205,7 +205,7 @@ Run `npm test`. It needs Node 18 or newer (tested on Node 22) and takes about a 
 | F-02 | S | Autosave writes the file | After F-01, look in `data/<ROOM>.json` | The new stroke is in the file. No file for this room in `data/drafts/` | | |
 | F-03 | S | Backup of unsaved boards | Draw on a never-saved board, wait 5 s | `data/drafts/<ROOM>.json` exists | | |
 | F-04 | D + S | Restore after a crash | Draw on two unsaved boards. Kill the server (`kill -9`). Start it and open the app | **Restore unsaved whiteboards** box says the server didn't shut down cleanly and lists both boards with name, date/time, room and stroke count | | |
-| F-05 | D | Restore one | Tick one board, restore it | Board comes back with its strokes, labelled "Restored from backup, not saved yet" | | |
+| F-05 | D | Restore and open | Tick one board, press **Restore and open** | The page opens that board (in its own room). It shows its strokes, labelled "Restored from backup, not saved yet" | | Button was "Restore selected" (bug 9) |
 | F-06 | D | Discard | Discard the other board | Asks to confirm, then it's gone from the list | | |
 | F-07 | D | Restore all | Repeat F-04, use **Restore all** | Every board comes back | | |
 | F-08 | D | Restore unsaved button | Close the box without choosing | **Restore unsaved (N)** in the toolbar reopens it. Button disappears when the list is empty | | |
@@ -214,6 +214,10 @@ Run `npm test`. It needs Node 18 or newer (tested on Node 22) and takes about a 
 | F-11 | D | Named board after a crash | Save a board, draw, wait 3 s, kill the server, restart | Board loads complete from autosave. It's not in the restore list | | |
 | F-12 | V | Restore box in VR page | After a crash, open the VR page | The restore box is offered there too | | |
 | F-13 | S | Backups stay put | Restore a board but don't Save it, then crash again | It's offered again (it still needs a name and a Save) | | |
+| F-14 | D | Save selected | After a crash, tick one or more boards and press **Save selected** | Each row says "Saved as “name” · Open". The boards are saved straight away under the names shown: they appear in **Saved boards**, show "Saved at …", and aren't offered for restore again | | Bug 8 (new) |
+| F-15 | D | Rename with the pencil | Press **✎** on a row, type a new name, press Enter. Try Escape on another row, and clicking away from the box on a third | Enter and clicking away keep the new name in the list and tick the row; Escape keeps the old name. Clicking in the box doesn't tick or untick the row | | Bug 10 (new) |
+| F-16 | D | Pencil, then save or restore | Rename one row with ✎ and press Save selected. Rename another and press Restore and open | The first is saved under the new name. The second opens with the new name, still unsaved (italic, "Not saved yet" style label) | | Bugs 8 and 10 |
+| F-17 | D | Restore and open across rooms | Tick boards from two different rooms and press **Restore and open** | Both come back. Since only one room can be open, the page stays on the list and each row shows "Restored · Open" | | Bug 9 |
 
 ### G. Naming and export inside a headset (PR #1)
 
@@ -449,4 +453,7 @@ Copy a row for each problem. Put the bug number in the test's Notes column.
 | 5 | B-09c (found while fixing bug 3) | D, desktop browser | After pressing the mouse button above the board and dragging onto it, later strokes on the board stopped after the first bit (the browser was dragging the selected text instead) | Strokes always draw | Press above the board, drag onto it, let go, then draw | Minor | Resolved (retest passed 2026-11-27): pressing on the board no longer selects or drags page text. Retest with B-09c |
 | 6 | B-08b | M, iPad landscape | At Fit (fully zoomed out), the bottom of the board is hidden behind the toolbar | The whole board fits above the toolbar | Open the 2D page on an iPad in landscape | Major | Resolved (retest passed 2026-11-27): Fit now measures the tab bar and toolbar and keeps the board between them; it re-fits when the toolbar changes height. On very short screens the page gets room to scroll the board above the toolbar. Retest with B-08c |
 | 7 | B-10 (wording) | D, V, H | Erase button called "Erase whole board" in 2D and "Erase All" in VR | The same name, "Erase board", in both | Compare the two pages | Minor | Resolved (retest passed 2026-11-27): "Erase board" in 2D, "Erase board (x3)" on the VR box, and a new **Erase board** button in the VR page's desktop toolbar (same 3 clicks) |
-| 8 | | | | | | | |
+| 8 | C-06 (new feature) | D, V | The restore list can only bring boards back unsaved, so each one then needs its own Save | A way to save them straight away under their names | Crash the server with unsaved boards, open the app | Feature | Done: **Save selected** restores the ticked boards and saves them under the names shown. Retest with F-14, F-16 |
+| 9 | C-06 (wording) | D, V | "Restore selected" doesn't say the boards will open | A clearer label | Same as bug 8 | Minor | Done: renamed **Restore and open**. It now opens the restored board (or, for boards from several rooms, shows an Open link on each row). Retest with F-05, F-17 |
+| 10 | C-06 (new feature) | D, V | No way to rename a board in the restore list before saving or restoring | A small edit symbol on each row | Same as bug 8 | Feature | Done: **✎** on each row turns the name into a text box. The new name is used by Save selected, Restore and open and Restore all. Retest with F-15, F-16 |
+| 11 | | | | | | | |
