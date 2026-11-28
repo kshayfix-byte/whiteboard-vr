@@ -452,6 +452,8 @@ From Kate's retest of section Q on 2026-11-28.
 | R-10 | H | Follow keeps up with turns (bug 32) | Panel: Follow. Rest both controllers pointing at the panel, then turn 45° and 90° left and right, and turn all the way round | After each turn the panel glides back in front of you within about half a second | | |
 | R-11 | H | Follow doesn't move under the pointer (bug 32) | Point at a button and turn your head a little to read a label | The panel stays still while you aim at a button | | |
 | R-12 | V | Pen size with the mouse (bug 33) | VR page without a headset: click **+** and **-** | The "Pen size" label goes up and down by 10 (5 to 50) and the button flashes |  |  |
+| R-13 | V + H | Leaving the board ends the line (bug 34) | Hold the mouse button (desktop) or trigger (headset), draw, go off the edge, come back further along, let go | Two separate lines, nothing joining them. Same for both controllers | | |
+| R-14 | H | Two controllers (bug 34) | Rest the left controller pointing at the board, draw with the right. Then draw with both at once | Lines go where each pointer is, with no jumps between the two | | |
 
 ### P. Combined, multi-user and performance checks
 
@@ -530,4 +532,5 @@ Copy a row for each problem. Put the bug number in the test's Notes column.
 | 31 | Q-09 (feature) | H, V | Button colours are mixed; no sign of the mode in use or of a press | One scheme, active colour, press feedback | Look at the panel | Feature | Fixed, awaiting retest: teal buttons (red for Erase / Remove board), one orange hover colour (not on colour discs), blue for the mode in use, a white flash and grow on every press. Retest with R-06 to R-09 |
 | 32 | Q-09 (found in retest) | H | In Follow the panel follows you when you move but not when you turn | It stays in front of you when you turn | Panel: Follow, turn | Major | Fixed, awaiting retest: the panel never followed while a pointer touched it, and the new big backing plate is in front of a resting controller nearly all the time. Now only aiming at an actual control pauses it, and it follows after a 30° turn for 0.3 s (was 65° for 0.6 s). Retest with R-10, R-11, M-03, M-04 |
 | 33 | Q-18 | V | On the VR page without a headset, the Pen size - and + don't respond to clicks | Mouse clicks work | Click + | Minor | Fixed, awaiting retest: they only listened to the controller trigger (also true before this round); now a mouse click works too. Retest with R-12 |
-| 34 | | | | | | | |
+| 34 | (found in retest) | V, H | Drawing on a board, moving off it and back on somewhere else draws a straight line between the two spots | The stroke ends at the edge; coming back starts a new one | Hold the mouse button (or trigger), drag off the board and back on | Major | Fixed, awaiting retest: each pen (mouse, left and right controller) now keeps its own stroke, ends it when it leaves the board, and starts a new one when it comes back. Before, the mouse never ended its stroke and both controllers shared one. Retest with R-13, R-14 |
+| 35 | | | | | | | |
