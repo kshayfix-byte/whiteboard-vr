@@ -369,22 +369,22 @@ Run `npm test`. It needs Node 18 or newer (tested on Node 22) and takes about a 
 
 | ID | Platform | Test | Steps | Expected | Result | Notes |
 |---|---|---|---|---|---|---|
-| N-01 | D | Add 360° board | **+ Add 360° board** | Tab "360° Whiteboard_####". Size button shows "360°: 8 m around × 1.8 m high" and is disabled | | |
-| N-02 | D | Turn the view | ◀ Turn / Turn ▶ / Front | View turns 45° each press. Front resets. "front (in VR)" and "behind (edges join here)" tags show | | |
-| N-03 | D | Draw across the join | Turn so the "behind" line is in the middle, draw across it | Line carries on across the join with no gap or jump | | |
-| N-04 | D | Export | Export a 360° board | 8000 × 1800 PNG without the front/behind tags | | |
-| N-05 | D + V | Sync | Draw and Erase board on a 360° board in 2D, VR page and a second window | All stay in step | | |
-| N-06 | H | Add from VR | Trigger **Add 360 board** on the panel | A grey drum appears behind the start. Message says to press Go inside | |. Changed by bugs V1-V5 |
-| N-07 | H | Go inside / Step out | Select the drum, press **Go inside**. Press again, or Back to start | You're in the middle facing the front. Label says "Step out". Pressing again or Back to start takes you out. Go inside is grey unless a 360° board is selected | | |
-| N-08 | H | Draw all round | Draw all the way round, including behind you across the join | Ink appears everywhere. Pen dot shows on the wall | | |
-| N-09 | H | Not from outside | Point at the drum from outside | No pen dot and no drawing | | |
-| N-10 | H | Selected and name tag | Select the 360° board | Rims turn orange. Name tag readable inside and outside ("360: …") | | |
+| N-01 | D | Add 360° board | **+ Add 360° board** | Tab "360° Whiteboard_####". Size button shows "360°: 8 m around × 1.8 m high" and is disabled | Pass | Pass (2026-11-28) |
+| N-02 | D | Turn the view | ◀ Turn / Turn ▶ / Front | View turns 45° each press. Front resets. "front (in VR)" and "behind (edges join here)" tags show | Pass | Pass (2026-11-28) |
+| N-03 | D | Draw across the join | Turn so the "behind" line is in the middle, draw across it | Line carries on across the join with no gap or jump | Pass | Pass (2026-11-28) |
+| N-04 | D | Export | Export a 360° board | 8000 × 1800 PNG without the front/behind tags | Pass | Pass (2026-11-28) |
+| N-05 | D + V | Sync | Draw and Erase board on a 360° board in 2D, VR page and a second window | All stay in step | Pass | Pass (2026-11-28) |
+| N-06 | H | Add from VR | Trigger **Add 360 board** on the panel | A grey drum appears behind the start. Message says to press Go inside | Pass | . Changed by bugs V1-V5. Pass (2026-11-28) |
+| N-07 | H | Go inside / Step out | Select the drum, press **Go inside**. Press again, or Back to start | You're in the middle facing the front. Label says "Step out". Pressing again or Back to start takes you out. Go inside is grey unless a 360° board is selected | Pass | Pass (2026-11-28) |
+| N-08 | H | Draw all round | Draw all the way round, including behind you across the join | Ink appears everywhere. Pen dot shows on the wall | Pass | Pass (2026-11-28) |
+| N-09 | H | Not from outside | Point at the drum from outside | No pen dot and no drawing | Pass | Pass (2026-11-28) |
+| N-10 | H | Selected and name tag | Select the 360° board | Rims turn orange. Name tag readable inside and outside ("360: …") | Pass | Pass (2026-11-28) |
 | N-11 | H | Fixed size | Press Board size on a 360° board | Board size label reads "Size: fixed (360)" and the button is grey. Pressing it says 360 boards have a fixed size | Pass | . Changed by bug V10. Pass by Q-13 (2026-11-28) |
-| N-12 | H | Can't grab | Grip on a 360° board | Message says it can't be grabbed. Desktop Move board panel still moves it. Auto place puts it back | |. Auto place is now Reset position (bug V11) |
-| N-13 | H | Export from VR | Export a 360° board in VR | Panorama PNG downloads | | |
-| N-14 | D + S | Save and restore | Save, Rename, autosave, Save all, restore unsaved and Remove (×3) on a 360° board. Restart | All work. It reloads as a 360° board | | |
-| N-15 | V | Several 360° boards | Add 3 | They line up one behind another. Flat boards keep their layout | | |
-| N-16 | H | Performance and comfort | Draw on the wall for a minute. Step in and out with teleport | Smooth frame rate. Wall readable at 1.27 m | | |
+| N-12 | H | Can't grab | Grip on a 360° board | Message says it can't be grabbed. Desktop Move board panel still moves it. Auto place puts it back | Pass | . Auto place is now Reset position (bug V11). Pass (2026-11-28) |
+| N-13 | H | Export from VR | Export a 360° board in VR | Panorama PNG downloads | Pass | Pass (2026-11-28) |
+| N-14 | D + S | Save and restore | Save, Rename, autosave, Save all, restore unsaved and Remove (×3) on a 360° board. Restart | All work. It reloads as a 360° board | Pass | Pass (2026-11-28) |
+| N-15 | V | Several 360° boards | Add 3 | They line up one behind another. Flat boards keep their layout | Pass | Pass (2026-11-28) |
+| N-16 | H | Performance and comfort | Draw on the wall for a minute. Step in and out with teleport | Smooth frame rate. Wall readable at 1.27 m | Pass | Pass (2026-11-28) |
 
 ### O. Highlighter and Erase highlights (PR #9)
 
