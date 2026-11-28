@@ -300,23 +300,23 @@ Run `npm test`. It needs Node 18 or newer (tested on Node 22) and takes about a 
 
 | ID | Platform | Test | Steps | Expected | Result | Notes |
 |---|---|---|---|---|---|---|
-| K-01 | H | Grip tip | Enter VR | A tip about holding the grip button shows | | |
-| K-02 | H | Grab a pointed board | Point at a board, hold grip | Board is selected and its frame turns blue | | |
-| K-03 | H | Grab with nothing pointed | Point at the floor, hold grip | The selected board is grabbed | | |
-| K-04 | H | Move, raise, turn | Swing, raise and twist the controller | Board follows smoothly, stays upright, never goes below the floor | | |
-| K-05 | H | Push and pull | Thumbstick forward / back while holding | Board moves away / closer. Stops at about 0.2 m | | |
-| K-06 | H | Turn on the spot | Thumbstick left / right while holding | Board turns | | |
-| K-07 | H | Drop | Let go of grip | Board stays. Frame goes back to orange | | |
-| K-08 | H | Two hands | Grab with one hand, press and release grip on the other | Nothing happens. The first hand keeps the board | | |
-| K-09 | H | Leave VR while holding | Exit VR mid-grab | Board drops where it is | | |
+| K-01 | H | Grip tip | Enter VR | A tip about holding the grip button shows | Pass | Pass (2026-11-28) |
+| K-02 | H | Grab a pointed board | Point at a board, hold grip | Board is selected and its frame turns blue | Pass | Pass (2026-11-28) |
+| K-03 | H | Grab with nothing pointed | Point at the floor, hold grip | The selected board is grabbed | Pass | Pass (2026-11-28) |
+| K-04 | H | Move, raise, turn | Swing, raise and twist the controller | Board follows smoothly, stays upright, never goes below the floor | Pass | Pass (2026-11-28) |
+| K-05 | H | Push and pull | Thumbstick forward / back while holding | Board moves away / closer. Stops at about 0.2 m | Pass | Pass (2026-11-28) |
+| K-06 | H | Turn on the spot | Thumbstick left / right while holding | Board turns | Pass | Pass (2026-11-28) |
+| K-07 | H | Drop | Let go of grip | Board stays. Frame goes back to orange | Pass | Pass (2026-11-28) |
+| K-08 | H | Two hands | Grab with one hand, press and release grip on the other | Nothing happens. The first hand keeps the board | Pass | Pass (2026-11-28) |
+| K-09 | H | Leave VR while holding | Exit VR mid-grab | Board drops where it is | Pass | Pass (2026-11-28) |
 | K-10 | H | Auto place | Select a moved board and press **Reset position** | Board goes back to the ring. On a board that wasn't moved, the message says it is already in its own place | Pass | . Changed by bug V11: renamed Reset position, always pressable. Pass by Q-14 (2026-11-28) |
-| K-11 | H | Draw on a moved board | Move a board, then draw on it | Drawing works | | |
-| K-12 | V | Desktop Move board panel | **Move board**: Left, Right, Up, Down, Closer, Farther, both Turns, **Face me**, **Auto place** | Each moves the selected board one step (25 cm / 15°). Status says "Placed by hand" / "Placed automatically" correctly when switching boards | |. Auto place is now called Reset position (bug V11) |
-| K-13 | V | Others see moves | Move a board in one window | The other window sees it move live and its final place | | |
-| K-14 | S | Place is saved | Move a named board, wait, restart. Move an unsaved board, crash, restore | Place kept both times | | |
-| K-15 | V | Old rooms | Open a room saved before PR #5 | Boards use the automatic layout | | |
-| K-16 | V | Resize or add keeps hand placement | Resize a moved board. Add and remove other boards | Moved board stays put | | |
-| K-17 | D | 2D ignores places | Move boards in VR, look at 2D | 2D page is unaffected | | |
+| K-11 | H | Draw on a moved board | Move a board, then draw on it | Drawing works | Pass | Pass (2026-11-28) |
+| K-12 | V | Desktop Move board panel | **Move board**: Left, Right, Up, Down, Closer, Farther, both Turns, **Face me**, **Auto place** | Each moves the selected board one step (25 cm / 15°). Status says "Placed by hand" / "Placed automatically" correctly when switching boards | Pass | . Auto place is now called Reset position (bug V11). Pass (2026-11-28) |
+| K-13 | V | Others see moves | Move a board in one window | The other window sees it move live and its final place | Pass | Pass (2026-11-28) |
+| K-14 | S | Place is saved | Move a named board, wait, restart. Move an unsaved board, crash, restore | Place kept both times | Pass | Pass (2026-11-28) |
+| K-15 | V | Old rooms | Open a room saved before PR #5 | Boards use the automatic layout | Pass | Pass (2026-11-28) |
+| K-16 | V | Resize or add keeps hand placement | Resize a moved board. Add and remove other boards | Moved board stays put | Pass | Pass (2026-11-28) |
+| K-17 | D | 2D ignores places | Move boards in VR, look at 2D | 2D page is unaffected | Pass | Pass (2026-11-28) |
 
 ### L. Moving yourself and long reach (PR #6)
 
