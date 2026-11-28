@@ -15,6 +15,12 @@ Video: [https://www.youtube.com/watch?v=YjOsA-EFc9I&feature=youtu.be](https://ww
 3. Install dependencies `npm install`
 4. Build project `npm run build`
 5. Start Webserver (with socket.io) `npm run start`. It serves `http://<your IP>:3000`. For VR headsets, run `npm run cert` once first: the server then also serves `https://<your IP>:3443` (accept the self-signed certificate warning once). Browsers only allow VR on https pages.
+6. Open the whiteboard in your web browser. Once step 5 is running, the whiteboard works like a website that lives on your own computer:
+   - **On the same computer:** open your web browser (Chrome, Edge, Firefox or Safari), type `http://localhost:3000` into the address bar at the top, and press Enter.
+   - **On another device** (a phone, tablet, another laptop or a VR headset) connected to the same Wi-Fi: type `http://`, then your computer's IP address, then `:3000`. For example: `http://192.168.1.25:3000`.
+   - **Finding your IP address:** this is the number that identifies your computer on your home or office network. On Windows, open Command Prompt, type `ipconfig` and look for "IPv4 Address". On a Mac, open System Settings > Wi-Fi, click **Details** next to your network, and look for "IP address".
+   - **In a VR headset:** use `https://` and `:3443` instead, for example `https://192.168.1.25:3443`. The first time, the browser warns that the connection is not private. This is expected, because the security certificate was made on your own computer: choose **Advanced**, then continue to the site.
+   - Everyone who opens the same address and room code sees the same whiteboard.
 
 ## Running on Steam Frame
 
