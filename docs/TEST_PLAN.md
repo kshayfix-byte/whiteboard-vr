@@ -275,26 +275,26 @@ Run `npm test`. It needs Node 18 or newer (tested on Node 22) and takes about a 
 
 | ID | Platform | Test | Steps | Expected | Result | Notes |
 |---|---|---|---|---|---|---|
-| J-01 | D | Size button | Look at the tab bar, switch tabs | **Size: 1.5 × 1 m** shows each board's size | | |
-| J-02 | D | Presets | Apply Standard, Wide, Large, Wall, Tall in turn | Each applies and the board keeps its shape on screen | | |
-| J-03 | D | Custom size | Width 2.2, height 1.3 | Board becomes 2.2 × 1.3 m | | |
-| J-04 | D | Out of range | Width 9 m (or height 0.2 m) | Error message. Nothing changes | | |
-| J-05 | D | Grow keeps drawings centred | Draw in the middle, change to Wall | Drawing stays in the middle, same size | | |
-| J-06 | D | Shrink crops, grow brings back | Draw near the edge, shrink to Tall, then back to Standard | The edge drawing is hidden, then comes back exactly | | |
-| J-07 | D | Others see the resize | Resize in one window | Other window updates at once | | |
-| J-08 | D | Drawing during a resize | Keep drawing in window 2 while window 1 resizes | Strokes land in the right place | | |
-| J-09 | D | Zoom | Use −, +, Fit | Zoom changes, percentage shows on Fit, up to 200% | | |
-| J-10 | D | Draw while zoomed | Zoom to 200%, scroll, draw | Line appears under the cursor | | |
-| J-11 | D | Tab bar while scrolling | Scroll a zoomed board | Tab bar stays at the top. Switching tabs resets to Fit | | |
-| J-12 | D | Export size | Export a Wall board | PNG is 4000 × 2000 px | | |
-| J-13 | S | Size is saved | Resize a named board, restart. Resize an unsaved board, crash, restore | Size is kept both times | | |
-| J-14 | V | VR board size | Use the desktop size picker in the VR page. Set a custom size from 2D | Plane resizes. Picker shows "Custom (…)" for the custom size | | |
-| J-15 | H | Board size button | Trigger **Board size** repeatedly | Cycles Standard → Wide → Large → Wall → Tall → Standard. Label updates | | |
-| J-16 | H | Wide first board | Make the first board Wall | Board sits behind the button columns. Buttons can still be pressed | | |
-| J-17 | H | No overlaps | Mix sizes across 5+ boards | Side boards don't overlap. A full ring starts a new ring further out | | |
-| J-18 | H | Big board speed | Draw quickly on a Wall board | No noticeable stutter. Text is sharp | | |
-| J-19 | H | Pen dot | Draw on each size | Pen dot matches the stroke width | | |
-| J-20 | H | No stray pen dot | Resize or remove a board you were drawing on | No leftover pen-dot sphere | | |
+| J-01 | D | Size button | Look at the tab bar, switch tabs | **Size: 1.5 × 1 m** shows each board's size | Pass | Pass (2026-11-28) |
+| J-02 | D | Presets | Apply Standard, Wide, Large, Wall, Tall in turn | Each applies and the board keeps its shape on screen | Pass | Pass (2026-11-28) |
+| J-03 | D | Custom size | Width 2.2, height 1.3 | Board becomes 2.2 × 1.3 m | Pass | Pass (2026-11-28) |
+| J-04 | D | Out of range | Width 9 m (or height 0.2 m) | Error message. Nothing changes | Pass | Pass (2026-11-28) |
+| J-05 | D | Grow keeps drawings centred | Draw in the middle, change to Wall | Drawing stays in the middle, same size | Pass | Pass (2026-11-28) |
+| J-06 | D | Shrink crops, grow brings back | Draw near the edge, shrink to Tall, then back to Standard | The edge drawing is hidden, then comes back exactly | Pass | Pass (2026-11-28) |
+| J-07 | D | Others see the resize | Resize in one window | Other window updates at once | Pass | Pass (2026-11-28) |
+| J-08 | D | Drawing during a resize | Keep drawing in window 2 while window 1 resizes | Strokes land in the right place | Pass | Pass (2026-11-28) |
+| J-09 | D | Zoom | Use −, +, Fit | Zoom changes, percentage shows on Fit, up to 200% | Pass | Pass (2026-11-28) |
+| J-10 | D | Draw while zoomed | Zoom to 200%, scroll, draw | Line appears under the cursor | Pass | Pass (2026-11-28) |
+| J-11 | D | Tab bar while scrolling | Scroll a zoomed board | Tab bar stays at the top. Switching tabs resets to Fit | Pass | Pass (2026-11-28) |
+| J-12 | D | Export size | Export a Wall board | PNG is 4000 × 2000 px | Pass | Pass (2026-11-28) |
+| J-13 | S | Size is saved | Resize a named board, restart. Resize an unsaved board, crash, restore | Size is kept both times | Pass | Pass (2026-11-28) |
+| J-14 | V | VR board size | Use the desktop size picker in the VR page. Set a custom size from 2D | Plane resizes. Picker shows "Custom (…)" for the custom size | Pass | Pass (2026-11-28) |
+| J-15 | H | Board size button | Trigger **Board size** repeatedly | Cycles Standard → Wide → Large → Wall → Tall → Standard. Label updates | Pass | Pass (2026-11-28) |
+| J-16 | H | Wide first board | Make the first board Wall | Board sits behind the button columns. Buttons can still be pressed | Pass | Pass (2026-11-28) |
+| J-17 | H | No overlaps | Mix sizes across 5+ boards | Side boards don't overlap. A full ring starts a new ring further out | Pass | Pass (2026-11-28) |
+| J-18 | H | Big board speed | Draw quickly on a Wall board | No noticeable stutter. Text is sharp | Pass | Pass (2026-11-28) |
+| J-19 | H | Pen dot | Draw on each size | Pen dot matches the stroke width | Skip | Ignored at Kate's request (2026-11-28) |
+| J-20 | H | No stray pen dot | Resize or remove a board you were drawing on | No leftover pen-dot sphere | Pass | Pass (2026-11-28) |
 
 ### K. Moving whiteboards (PR #5)
 
