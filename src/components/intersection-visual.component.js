@@ -2,7 +2,7 @@
 // the pen (or eraser) tip. From further away a ring around the dot is added,
 // growing with the distance, so you can still see where you'd draw on a far
 // board. Only shown on the first thing the pointer hits.
-import { nearestHit, NEAR_REACH } from '../vr/reach';
+import { nearestHit, NEAR_REACH, canDrawAt } from '../vr/reach';
 
 const RING_PER_METRE = 0.012;   // ring radius per metre of distance
 
@@ -63,6 +63,8 @@ AFRAME.registerComponent('intersection-visual', {
         let intersection = nearestHit(this.raycasterObj, this.el);
         // No pen marker on parts you can't draw on (the outside of a 360-degree board).
         if (!intersection || intersection.object.userData.noPen) { this.hide(); return; }
+        // Out of reach (Reach: 20 cm): no pen dot, so you can see it won't draw.
+        if (!canDrawAt(intersection.distance)) { this.hide(); return; }
         const p = intersection.point;
         this.mesh.position.set(p.x, p.y, p.z);
 

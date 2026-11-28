@@ -75,3 +75,35 @@ test('C-07 remove guard: needs three presses, each within the window', async () 
   assert.deepEqual(events, ['left 2', 'left 1', 'confirm b2'], 'a different board starts over');
   guard.reset(false);
 });
+
+// ---- VR headset fixes (bugs V1 to V13) ----
+import { panelSpot, FORWARD, DROP } from '../src/vr/tool-panel.js';
+import { canDrawAt, setReachMode, NEAR_REACH, LONG_REACH } from '../src/vr/reach.js';
+import { layoutBoards, FIRST_Z, FIRST_BOTTOM } from '../src/vr/layout.js';
+
+test('C-08 tool panel goes in front of and below the eyes, never too low', () => {
+  const s = panelSpot({ x: 0, y: 1.6, z: 0.1, yaw: 0 });
+  assert.ok(Math.abs(s.z - (0.1 - FORWARD)) < 1e-9, 'straight ahead');
+  assert.ok(Math.abs(s.y - (1.6 - DROP)) < 1e-9, 'below the eyes');
+  const turned = panelSpot({ x: 0, y: 1.6, z: 0, yaw: Math.PI / 2 }); // looking towards -x
+  assert.ok(Math.abs(turned.x + FORWARD) < 1e-9 && Math.abs(turned.z) < 1e-9, 'follows the head turn');
+  assert.ok(panelSpot({ x: 0, y: 0.7, z: 0, yaw: 0 }).y >= 0.5, 'sitting on the floor: not under the floor');
+});
+
+test('C-09 reach setting limits drawing only', () => {
+  global.document = { querySelectorAll: () => [] }; // no controllers outside a browser
+  setReachMode('short');
+  assert.equal(canDrawAt(NEAR_REACH), true);
+  assert.equal(canDrawAt(NEAR_REACH + 0.01), false, '20 cm: a board further away is not drawn on');
+  setReachMode('long');
+  assert.equal(canDrawAt(LONG_REACH - 0.1), true);
+  delete global.document;
+});
+
+test('C-10 first board sits beyond the tool panel, above it', () => {
+  const [first] = layoutBoards([{ width: 1500, height: 1000 }]);
+  assert.equal(first.position[2], FIRST_Z);
+  assert.ok(first.position[1] - 0.5 >= FIRST_BOTTOM - 1e-9, 'lower edge at or above FIRST_BOTTOM');
+  const [wide] = layoutBoards([{ width: 4000, height: 2000 }]);
+  assert.equal(wide.position[2], FIRST_Z, 'a big board no longer moves; the panel is not around it');
+});

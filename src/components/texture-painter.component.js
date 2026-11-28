@@ -11,7 +11,7 @@ import {
     exportFilename, downloadCanvas, sizeCanvas, unwrapX, useLayers
 } from '../board-client';
 import { socket, room, tools, selectBoard } from '../vr/session';
-import { nearestHit } from '../vr/reach';
+import { nearestHit, canDrawAt } from '../vr/reach';
 import { createWrapSurface } from '../vr/wrap-surface';
 
 // Drawing from far away: hand shake grows with distance, so strokes drawn
@@ -232,6 +232,13 @@ AFRAME.registerComponent('texture-painter', {
             this.lastY = null;
             return;
         }
+        // The Reach setting only limits drawing (bug V9): with "20 cm", a
+        // board further away is selected but not drawn on.
+        if (this.triggerdown && !canDrawAt(intersection.distance)) {
+            this.lastX = null;
+            this.lastY = null;
+            return;
+        }
         if (this.triggerdown) {
             selectBoard(this.boardId);
             var x = this.wrapX(point.x);
@@ -311,7 +318,7 @@ AFRAME.registerComponent('texture-painter', {
 
         var intersects = this.getIntersects( this.onClickPosition, [this.el.getObject3D('mesh')] );
 
-        var point = intersects.length > 0 && this.pointFromHit(intersects[ 0 ]);
+        var point = intersects.length > 0 && !this.panelInFront(intersects[ 0 ]) && this.pointFromHit(intersects[ 0 ]);
         if ( point ) {
             this._draw( this.wrapX(point.x), point.y );
         }
@@ -325,7 +332,7 @@ AFRAME.registerComponent('texture-painter', {
 
         var intersects = this.getIntersects( this.onClickPosition, [this.el.getObject3D('mesh')] );
 
-        var point = intersects.length > 0 && this.pointFromHit(intersects[ 0 ]);
+        var point = intersects.length > 0 && !this.panelInFront(intersects[ 0 ]) && this.pointFromHit(intersects[ 0 ]);
         if ( point ) {
 
             selectBoard(this.boardId);
@@ -342,6 +349,16 @@ AFRAME.registerComponent('texture-painter', {
         this.lastY = null;
 
         this.enableLookControls();
+    },
+
+    // Mouse (outside a headset): is the tool panel between the camera and
+    // this hit? Then the click is for the panel, not the board. Uses the ray
+    // getIntersects() just set up.
+    panelInFront: function (hit) {
+        const panel = document.getElementById('tool-panel');
+        if (!panel) return false;
+        const hits = this.raycaster.intersectObject(panel.object3D, true);
+        return hits.length > 0 && hits[0].distance < hit.distance;
     },
 
     getMousePosition: function ( dom, x, y ) {

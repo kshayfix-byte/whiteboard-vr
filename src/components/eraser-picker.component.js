@@ -1,9 +1,14 @@
 import { tools, useEraser, onToolChange } from '../vr/session';
 import { watchTouch } from '../vr/reach';
 
-// Touch the eraser box to pick up the eraser; touch it again to switch
-// between the ordinary eraser (pink: writing and highlights) and the
-// highlight eraser (yellow: highlights only, writing stays).
+// An eraser box on the tool panel. Point at it and pull the trigger to pick
+// up that eraser. There are two boxes (bug V8: one box that toggled between
+// them could leave you stuck on the wrong one):
+//   eraser-picker                       pink "Eraser": writing and highlights
+//   eraser-picker="highlightsOnly: true" yellow "Erase highlights": highlights
+//                                       only, writing stays
+// Pressing a box again keeps the same eraser. The box of the eraser in use
+// is a bit bigger.
 const HIGHLIGHT_ERASER_COLOR = '#FFF176';
 
 
@@ -16,6 +21,10 @@ AFRAME.registerComponent('eraser-picker', {
         clearing: {
             type: 'boolean',
             default: true
+        },
+        highlightsOnly: {
+            type: 'boolean',
+            default: false
         }
     },
     init: function () {
@@ -32,36 +41,36 @@ AFRAME.registerComponent('eraser-picker', {
         this.el.sceneEl.addEventListener( 'mouseup', this.onMouseUp.bind(this), false );
 
         this.el.setAttribute('material', {
-            color: this.data.color
+            color: this.boxColor()
         })
-        // Touch it with the pointer (within 20 cm), or point and pull the
-        // trigger from further away (see vr/reach.js).
+        this.baseScale = this.el.object3D.scale.clone();
+        // Point at it and pull the trigger (see vr/reach.js).
         this.touch = watchTouch(this.el, (controller) => {
             this.activateEraser()
-            controller.setAttribute('line', { color: tools.eraserColor || this.data.color });
+            controller.setAttribute('line', { color: this.boxColor() });
         });
         onToolChange(() => this.show());
+        this.show();
     },
     tick: function () {
         this.touch.tick();
     },
-    activateEraser: function() {
-        if (tools.clearing) {
-            const hl = !tools.highlight;
-            useEraser(hl ? HIGHLIGHT_ERASER_COLOR : this.data.color, hl);
-        } else {
-            useEraser(this.data.color, false);
-        }
+    boxColor: function() {
+        return this.data.highlightsOnly ? HIGHLIGHT_ERASER_COLOR : this.data.color;
     },
-    // Box colour and label show which eraser is picked up.
+    activateEraser: function() {
+        useEraser(this.boxColor(), this.data.highlightsOnly);
+    },
+    // The box of the eraser in use is a bit bigger.
     show: function() {
-        const hl = tools.clearing && tools.highlight;
-        this.el.setAttribute('material', 'color', hl ? HIGHLIGHT_ERASER_COLOR : this.data.color);
-        const label = document.getElementById('vr-eraser-label');
-        if (label) label.setAttribute('value', hl ? 'Erase highlights' : 'Eraser');
+        const inUse = tools.clearing && !!tools.highlight === this.data.highlightsOnly;
+        const k = inUse ? 1.3 : 1;
+        if (this.baseScale) this.el.object3D.scale.set(this.baseScale.x * k, this.baseScale.y * k, this.baseScale.z);
     },
     onMouseUp: function(evt) {
-        var array = this.getMousePosition( this.renderer.domElement, evt.clientX || evt.touches[0].clientX, evt.clientY || evt.touches[0].clientY );
+        // Controllers also send mouseup events (with no position); only real mouse clicks count here.
+        if (evt.clientX == null && !(evt.touches && evt.touches[0])) return;
+        var array = this.getMousePosition( this.renderer.domElement, evt.clientX != null ? evt.clientX : evt.touches[0].clientX, evt.clientY != null ? evt.clientY : evt.touches[0].clientY );
         this.onClickPosition.fromArray( array );
 
         var intersects = this.getIntersects( this.onClickPosition, [this.el.getObject3D('mesh')] );

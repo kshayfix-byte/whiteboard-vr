@@ -1,11 +1,15 @@
 // Where the VR tool panel (colours, sizes, eraser, Save, board buttons, ...)
 // sits while you move around.
 //
-// Three ways, switched with the "Panel" button at the top of the panel (the
-// choice is remembered on this device):
+// The panel is one tilted plate, like a lectern, below your line of sight
+// so the whiteboard stays visible above it (it used to be a frame around the
+// first board, which a bigger or nearer board covered: bugs V1 to V5).
 //
-// - Follow (default): the panel floats in front of you, the same distance
-//   and height as the original panel at the start spot. It stays still while
+// Three ways, switched with the "Panel" button on the panel (the choice is
+// remembered on this device):
+//
+// - Follow (default): the panel floats in front of you, FORWARD metres
+//   ahead and DROP metres below your eyes. It stays still while
 //   you look around and only glides back in front of you when you turn well
 //   away from it (more than TURN_AWAY degrees for a moment) or move more than
 //   MOVE_AWAY metres from it (after a teleport, for example). It never moves
@@ -22,9 +26,13 @@
 // or the menu button on other controllers) brings the panel in front of you
 // straight away.
 //
+// Grip (bug V6): point at the panel (the dark handle on top, or anywhere on
+// the plate) and hold the grip button to carry it. It keeps facing you.
+// Let go and it stays there: the mode becomes Stay.
+//
 // The panel is an entity in the room (not inside the rig), so "Stay" is
-// simply "don't move it". Its children keep the positions from vr.html, which
-// were laid out for a user standing at the start spot.
+// simply "don't move it". Its children are laid out in vr.html around the
+// middle of the plate, facing +z.
 //
 // Outside VR the panel always goes back to the start spot, where the
 // original desktop view expects it.
@@ -36,16 +44,23 @@ const TURN_AWAY = 65;        // degrees between where you look and the panel bef
 const TURN_WAIT = 0.6;       // ...for this many seconds
 const MOVE_AWAY = 1.0;       // metres you can move away before it follows
 const GLIDE = 0.25;          // seconds, roughly, for it to glide into place
-const START = { x: 0, y: 0.3, z: 0 };     // the original panel spot
-const HEAD_START = { y: 1.6, z: 0.1 };    // the head the original panel was laid out for (standing)
-const HEIGHT_MIN = -0.3;     // how far the panel may go down/up from the original height
-const HEIGHT_MAX = 0.6;      // for people sitting or very tall people
+
+// Where the panel goes in front of you (guesses, to tune on a headset).
+export const FORWARD = 0.55;     // metres ahead of your eyes (level), to the middle of the plate
+export const DROP = 0.55;        // metres below your eyes
+export const TILT = 48;          // degrees the plate leans back (top away), so it faces your eyes
+const LOWEST = 0.55;             // the middle of the plate never goes lower than this above the floor
+const DESKTOP_HEAD = { x: 0, y: 1.3, z: 0.1, yaw: 0 };   // the camera outside VR (see locomotion.js)
+const DESKTOP_EXTRA = 0.5;       // metres further away outside a headset...
+const DESKTOP_DROP = 0.4;        // ...and this far below the eyes, so the mouse view shows all of it
+
+const MIN_HOLD = 0.25;       // metres between a controller and a panel it carries
+const MAX_HOLD = 3;
 
 // Wrist (guess, needs tuning on a headset): a smaller copy above the back of
 // the left hand, tilted towards the eyes.
-const WRIST_SCALE = 0.18;                            // ~37 x 30 cm
-const WRIST_CENTRE = { x: 0, y: 1.0, z: -0.57 };     // middle of the panel's contents (vr.html)
-const WRIST_OFFSET = { x: 0, y: 0.17, z: 0.02 };     // from the controller
+const WRIST_SCALE = 0.3;                             // ~35 x 20 cm
+const WRIST_OFFSET = { x: 0, y: 0.15, z: 0.02 };     // from the controller to the middle of the plate
 const WRIST_TILT = -40;                              // degrees, top tilted away from you
 
 function loadMode() {
@@ -55,6 +70,17 @@ function loadMode() {
     } catch (e) {
         return 'follow';
     }
+}
+
+// Where the middle of the panel goes for a head at h = {x, y, z, yaw}.
+// Exported for the tests.
+export function panelSpot(h) {
+    return {
+        x: h.x - Math.sin(h.yaw) * FORWARD,
+        y: Math.max(LOWEST, h.y - DROP),
+        z: h.z - Math.cos(h.yaw) * FORWARD,
+        yaw: h.yaw
+    };
 }
 
 function angleDiff(a, b) {
@@ -71,6 +97,8 @@ function angleDiff(a, b) {
 export function createToolPanel(options) {
     const { scene, panel, camera } = options;
     const obj = panel.object3D;
+    obj.rotation.order = 'YXZ';   // turn (yaw) first, then lean back (tilt)
+    const tiltRad = -TILT * Math.PI / 180;
     const controllers = Array.from(document.querySelectorAll('.controller'));
     let mode = loadMode();
     const listeners = [];
@@ -78,6 +106,7 @@ export function createToolPanel(options) {
     let target = null;        // { x, y, z, yaw } the panel glides to
     let awayFor = 0;          // seconds you've been looking away
     const triggers = new Set(); // controllers with the trigger held
+    let carried = null;       // { controller, localPos } while a grip carries the panel
 
     function hand(controller) {
         const lc = controller.getAttribute('laser-controls');
@@ -99,29 +128,22 @@ export function createToolPanel(options) {
         return { x: p.x, y: p.y, z: p.z, yaw: yaw };
     }
 
-    // The spot in front of the head where the original panel would be if the
-    // start spot had been here.
-    function spotInFront(h) {
-        const back = HEAD_START.z - START.z;   // the panel's origin is this far in front of the head
-        const y = Math.min(HEIGHT_MAX, Math.max(HEIGHT_MIN, h.y - HEAD_START.y)) + START.y;
-        return {
-            x: h.x - Math.sin(h.yaw) * back,
-            y: y,
-            z: h.z - Math.cos(h.yaw) * back,
-            yaw: h.yaw
-        };
-    }
+    const spotInFront = panelSpot;
 
+    // Full size, upright and leaning back, keeping its turn.
     function resetScale() {
         obj.scale.set(1, 1, 1);
-        obj.rotation.set(0, obj.rotation.y, 0);
+        obj.rotation.set(tiltRad, obj.rotation.y, 0, 'YXZ');
     }
 
+    // Outside a headset: a little further away than in VR, so the desktop
+    // view shows the board above it.
     function putAtStart() {
         target = null;
-        resetScale();
-        obj.position.set(START.x, START.y, START.z);
-        obj.rotation.set(0, 0, 0);
+        const spot = spotInFront(DESKTOP_HEAD);
+        spot.z -= DESKTOP_EXTRA;
+        spot.y = DESKTOP_HEAD.y - DESKTOP_DROP;
+        jumpTo(spot);
     }
 
     function jumpTo(spot) {
@@ -141,7 +163,58 @@ export function createToolPanel(options) {
     }
 
     function inUse() {
-        return triggers.size > 0 || pointingAtPanel() || (options.busy && options.busy());
+        return !!carried || triggers.size > 0 || pointingAtPanel() || (options.busy && options.busy());
+    }
+
+    // ---- Carrying it with the grip (bug V6) ----
+
+    // Is the first thing this controller points at part of the panel?
+    function pointsAtPanel(controller) {
+        const rc = controller.components.raycaster;
+        if (!rc || !rc.intersections) return false;
+        const first = rc.intersections.find((i) => i.object && i.object.el && i.object.el !== controller);
+        return !!first && onPanel(first.object.el);
+    }
+
+    function carry(controller) {
+        if (carried || !scene.is('vr-mode') || !pointsAtPanel(controller)) return false;
+        if (mode === 'wrist') {
+            // Off the wrist: full size where it is, then carry it.
+            obj.updateMatrixWorld();
+            const p = new THREE.Vector3().setFromMatrixPosition(obj.matrixWorld);
+            resetScale();
+            obj.position.copy(p);
+        }
+        target = null;
+        controller.object3D.updateMatrixWorld();
+        const inv = new THREE.Matrix4();
+        if (inv.invert) inv.copy(controller.object3D.matrixWorld).invert(); // newer three.js
+        else inv.getInverse(controller.object3D.matrixWorld);
+        carried = { controller: controller, localPos: obj.position.clone().applyMatrix4(inv) };
+        options.status('Moving the tool panel. Let go of the grip to leave it there.');
+        return true;
+    }
+
+    function drop(controller) {
+        if (!carried || carried.controller !== controller) return;
+        carried = null;
+        if (mode !== 'stay') setMode('stay', true);
+        options.status('Tool panel left here (Panel: Stay). Press Panel for Follow, or B / Y to bring it back.');
+    }
+
+    function followGrip() {
+        const ctrl = carried.controller.object3D;
+        ctrl.updateMatrixWorld();
+        const origin = new THREE.Vector3().setFromMatrixPosition(ctrl.matrixWorld);
+        const p = carried.localPos.clone().applyMatrix4(ctrl.matrixWorld);
+        // Keep it between MIN_HOLD and MAX_HOLD from the hand.
+        const d = p.distanceTo(origin);
+        if (d < MIN_HOLD || d > MAX_HOLD) p.sub(origin).setLength(Math.min(MAX_HOLD, Math.max(MIN_HOLD, d))).add(origin);
+        p.y = Math.max(0.2, p.y);
+        obj.position.copy(p);
+        // Face the head, upright and leaning back.
+        const h = head();
+        obj.rotation.set(tiltRad, Math.atan2(h.x - p.x, h.z - p.z), 0, 'YXZ');
     }
 
     // ---- Wrist ----
@@ -151,8 +224,7 @@ export function createToolPanel(options) {
         const t = new THREE.Matrix4().makeTranslation(WRIST_OFFSET.x, WRIST_OFFSET.y, WRIST_OFFSET.z);
         const r = new THREE.Matrix4().makeRotationX(WRIST_TILT * Math.PI / 180);
         const s = new THREE.Matrix4().makeScale(WRIST_SCALE, WRIST_SCALE, WRIST_SCALE);
-        const c = new THREE.Matrix4().makeTranslation(-WRIST_CENTRE.x, -WRIST_CENTRE.y, -WRIST_CENTRE.z);
-        wristLocal.multiply(t).multiply(r).multiply(s).multiply(c);
+        wristLocal.multiply(t).multiply(r).multiply(s);
     })();
     const wristWorld = new THREE.Matrix4();
 
@@ -174,6 +246,11 @@ export function createToolPanel(options) {
 
     function update(dt) {
         if (!scene.is('vr-mode')) return;
+
+        if (carried) {
+            followGrip();
+            return;
+        }
 
         if (mode === 'wrist') {
             followWrist();
@@ -197,7 +274,7 @@ export function createToolPanel(options) {
             obj.position.x += (target.x - obj.position.x) * k;
             obj.position.y += (target.y - obj.position.y) * k;
             obj.position.z += (target.z - obj.position.z) * k;
-            obj.rotation.y += angleDiff(target.yaw, obj.rotation.y) * k;
+            obj.rotation.set(tiltRad, obj.rotation.y + angleDiff(target.yaw, obj.rotation.y) * k, 0, 'YXZ');
             const left = Math.hypot(target.x - obj.position.x, target.y - obj.position.y, target.z - obj.position.z);
             if (left < 0.005 && Math.abs(angleDiff(target.yaw, obj.rotation.y)) < 0.005) {
                 jumpTo(target);
@@ -235,6 +312,8 @@ export function createToolPanel(options) {
     controllers.forEach((controller) => {
         controller.addEventListener('triggerdown', () => triggers.add(controller));
         controller.addEventListener('triggerup', () => triggers.delete(controller));
+        controller.addEventListener('gripdown', () => carry(controller));
+        controller.addEventListener('gripup', () => drop(controller));
         ['bbuttondown', 'ybuttondown', 'menudown'].forEach((name) => {
             controller.addEventListener(name, () => {
                 if (bringHere()) options.status('Tool panel brought in front of you.');
@@ -245,29 +324,37 @@ export function createToolPanel(options) {
     scene.addEventListener('enter-vr', () => {
         // Wait a moment for the headset's own head position to arrive.
         setTimeout(() => {
-            if (mode === 'follow' && scene.is('vr-mode')) jumpTo(spotInFront(head()));
+            // Follow and Stay both start in front of you, at your real height.
+            if (mode !== 'wrist' && scene.is('vr-mode')) jumpTo(spotInFront(head()));
         }, 300);
     });
     scene.addEventListener('exit-vr', () => {
         triggers.clear();
+        carried = null;
         putAtStart();
     });
 
     // ---- Settings ----
 
-    function setMode(next) {
+    // quiet: don't show the usual message (dropping the panel shows its own).
+    function setMode(next, quiet) {
+        const before = mode;
         mode = MODES.indexOf(next) !== -1 ? next : 'follow';
         try { window.localStorage.setItem(STORE_KEY, mode); } catch (e) { /* private mode */ }
         target = null;
         awayFor = 0;
-        if (mode !== 'wrist') {
-            // Coming off the wrist: full size, in front of you.
-            if (obj.scale.x !== 1) {
+        if (mode !== 'wrist' && !carried) {
+            if (obj.scale.x !== 1 || before === 'wrist') {
+                // Coming off the wrist: full size, in front of you.
                 if (scene.is('vr-mode')) jumpTo(spotInFront(head()));
                 else putAtStart();
+            } else if (mode === 'follow' && scene.is('vr-mode')) {
+                // Back to Follow: glide in front of you now (bug V3).
+                bringHere();
             }
         }
         listeners.forEach((fn) => fn(mode));
+        if (quiet) return;
         if (mode === 'follow') {
             options.status('Panel follows you: it moves in front of you when you turn away or move. B or Y brings it now.');
         } else if (mode === 'wrist') {
@@ -302,6 +389,10 @@ export function createToolPanel(options) {
         nextMode: nextMode,
         onModeChange: (fn) => listeners.push(fn),
         bringHere: bringHere,
+        // True while this controller's grip carries the panel, or would pick
+        // it up (it points at the panel), so the grip doesn't also grab a board.
+        holds: (controller) => !!carried && carried.controller === controller,
+        wantsGrip: (controller) => (!!carried && carried.controller === controller) || pointsAtPanel(controller),
         backToStart: backToStart,
         // After a jump (e.g. into a 360-degree board): put the panel in front
         // of the user straight away, unless it's on the wrist or set to Stay.

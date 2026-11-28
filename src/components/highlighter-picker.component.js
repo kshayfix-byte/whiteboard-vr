@@ -1,7 +1,7 @@
 // The highlighter on the VR tool panel: a see-through box in the
-// highlighter's colour. Touching it (or pointing and pulling the trigger)
-// picks up the highlighter; touching it again while it is in use moves on to
-// the next highlighter colour (yellow, green, pink, blue, orange). The colour
+// highlighter's colour. Pointing at it and pulling the trigger picks up the
+// highlighter; doing it again while it is in use moves on to the next
+// highlighter colour (yellow, green, pink, blue, orange). The colour
 // cylinders go back to the marker, and the eraser box to the eraser.
 import { tools, useHighlighter, highlighterColor, onToolChange } from '../vr/session';
 import { watchTouch } from '../vr/reach';

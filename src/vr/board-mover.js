@@ -16,8 +16,9 @@
 // Without a headset the page's "Move board" panel nudges the selected board
 // one step at a time (see nudge()).
 //
-// A moved board keeps its place ("pose") until someone presses "Auto place",
-// which puts it back in the automatic layout.
+// A moved board keeps its place ("pose") until someone presses "Reset
+// position" (it used to be called "Auto place"), which puts it back in the
+// automatic layout.
 
 import { clampPose, nudgePose } from './layout';
 
@@ -49,6 +50,8 @@ function angleDiff(a, b) {
 //   select(id)
 //   onLocalPose(id, pose) this page moved a board (pose null = auto place)
 //   onHeldChange(id)      a board was grabbed (id) or dropped (null)
+//   skipGrab(controller)  optional; true when this grip is for something else
+//                         (the tool panel, see tool-panel.js)
 //   canGrab(id)           optional; false for boards the grip can't pick up
 //                         (360-degree boards: you stand inside them)
 //   status(text, isError)
@@ -88,11 +91,12 @@ export function createBoardMover(options) {
 
     function grab(controller) {
         if (held) return;
+        if (options.skipGrab && options.skipGrab(controller)) return;
         const id = pointedBoard(controller) || options.selected();
         const e = id && options.entry(id);
         if (!e || !e.pose) return;
         if (options.canGrab && !options.canGrab(id)) {
-            options.status('360° boards can’t be grabbed. Use the Move board panel on a computer, or Auto place.');
+            options.status('360° boards can’t be grabbed. Use the Move board panel on a computer, or Reset position.');
             return;
         }
         if (id !== options.selected()) options.select(id);
@@ -201,9 +205,10 @@ export function createBoardMover(options) {
 
     function autoPlace(id) {
         id = id || options.selected();
-        if (!id || held) return;
+        if (!id || held) return false;
         options.onLocalPose(id, null);
         send(id, null, false);
+        return true;
     }
 
     return {

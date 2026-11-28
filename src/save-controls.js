@@ -54,11 +54,28 @@ export function createSaveControls(options) {
         if (els.rename) els.rename.disabled = !board;
         if (els.saveAll) {
             const enabled = !!(info && info.allNamed);
+            const unnamed = unnamedBoards();
             els.saveAll.disabled = !enabled;
+            // Say why it is grey (bug V13): some boards still have temporary names.
+            els.saveAll.textContent = enabled || !unnamed.length ? 'Save all' : 'Save all (' + unnamed.length + ' unnamed)';
             els.saveAll.title = enabled ? 'Save every whiteboard in this room'
-                : 'Available once every whiteboard has been named with its own Save button';
+                : saveAllReason();
         }
         onChange(board, info);
+    }
+
+    // Boards that still have a temporary name (Save all waits for these).
+    function unnamedBoards() {
+        return info ? info.boards.filter((b) => !b.named) : [];
+    }
+
+    // Why Save all can't be used yet, in words.
+    function saveAllReason() {
+        const unnamed = unnamedBoards();
+        if (!unnamed.length) return 'Available once every whiteboard has been named with its own Save button';
+        const names = unnamed.slice(0, 3).map((b) => '\u201c' + b.name + '\u201d').join(', ') + (unnamed.length > 3 ? ' and ' + (unnamed.length - 3) + ' more' : '');
+        return 'Save all works once every whiteboard has a name. ' + (unnamed.length === 1 ? 'This one still has a temporary name: ' : 'These still have temporary names: ') +
+            names + '. Select each one and press Save to name it.';
     }
 
     function setInfo(newInfo) {
@@ -135,6 +152,7 @@ export function createSaveControls(options) {
         info: () => info,
         saveCurrent: saveCurrent,
         saveAll: saveAll,
+        saveAllReason: saveAllReason,
         renameCurrent: renameCurrent,
         currentBoard: current,
         setStatus: setStatus

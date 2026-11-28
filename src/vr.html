@@ -68,92 +68,88 @@
       <button data-move="closer" title="25 cm closer">Closer</button>
       <button data-move="down" title="Down 25 cm">&#x25BC; Down</button>
       <button data-move="farther" title="25 cm farther away">Farther</button>
-      <button id="vr-auto-place" class="wide" title="Put it back where the automatic layout puts it" disabled>Auto place</button>
+      <button id="vr-auto-place" class="wide" title="Put a board you moved back in its own place (where the automatic layout puts it)" disabled>Reset position</button>
     </div>
     <a-scene shadow="type: pcfsoft" renderer="antialias: true">
       <a-entity environment="groundTexture: none; grid: 1x1; gridColor: #111"></a-entity>
 
-      <!-- The tool panel. Where it sits (follows you, on your wrist, or stays put)
-           is set by the "Panel" button and src/vr/tool-panel.js, which also sets
-           this entity's position. -->
-      <a-entity id="tool-panel" position="0 0.3 0">
-        <!-- <a-box material="color: #FFF; roughness: 0.4; metalness: 0.3" position="-0.8 1 -0.62" scale="0.1 1 0.05"></a-box>
-        <a-box material="color: #FFF; roughness: 0.4; metalness: 0.3" position="0.8 1 -0.62" scale="0.1 1 0.05"></a-box>
-        <a-box material="color: #FFF; roughness: 0.4; metalness: 0.3" position="0 1.525 -0.62" scale="1.7 0.05 0.05"></a-box>
-        <a-box material="color: #FFF; roughness: 0.4; metalness: 0.3" position="0 0.5 -0.62" scale="1.7 0.15 0.05"></a-box>
-        <a-box material="color: #CCC; roughness: 0.4; metalness: 0.3" position="0 0.42 -0.54" scale="1.7 0.02 0.2"></a-box> -->
+      <!-- The tool panel: one plate with every VR control on it, in rows
+           (pens, boards, files, you). Its middle is the entity's origin and it
+           faces +z. Where it sits (in front of you, on your left wrist, or left
+           where you put it) is set by the "Panel" button and src/vr/tool-panel.js.
+           Grip the handle on top (or anywhere on the plate) to move it yourself.
+           It used to be a frame around the first board, so a bigger or nearer
+           board hid its buttons (bugs V1 to V5). -->
+      <a-entity id="tool-panel">
+        <a-box id="vr-panel-plate" class="hittable" material="shader: flat; color: #D3D9DF" position="0 0 -0.01" width="1.16" height="0.68" depth="0.02"></a-box>
+        <!-- Grab handle (bug V6). -->
+        <a-box id="vr-panel-handle" class="hittable" material="color: #4A5560; roughness: 0.6" position="0 0.375 0" width="0.42" height="0.06" depth="0.03"></a-box>
+        <a-text id="vr-panel-handle-label" value="Grip here to move the panel" color="#FFFFFF" align="center" anchor="center" baseline="center" position="0 0.375 0.017" width="0.42"></a-text>
 
-        <a-sphere class="hittable" size-smaller="color: white" position="0.3 1.7 -0.6" radius="0.05" scale="1 1 0.3">
-            <a-text value="-" color="black" position="-0.024 0.01 0.05" width="2"></a-text>
+        <!-- Top strip: room and selected board, and the message line. -->
+        <a-entity position="-0.54 0.3 0.012" scale="0.35 0.35 0.35" room-number></a-entity>
+        <a-text id="vr-status-text" value="" color="#222" align="left" anchor="left" baseline="top" position="-0.14 0.315 0.012" width="0.7" wrap-count="50"></a-text>
+
+        <!-- Pens: colours, pen size, highlighter, erasers. Every control needs a trigger press. -->
+        <a-cylinder class="hittable" color-picker="color: black" position="-0.53 0.17 0.02" rotation="90 0 0" height="0.03" radius="0.027"></a-cylinder>
+        <a-cylinder class="hittable" color-picker="color: #AC92EB" position="-0.46 0.17 0.02" rotation="90 0 0" height="0.03" radius="0.027"></a-cylinder>
+        <a-cylinder class="hittable" color-picker="color: #4FC1E8" position="-0.39 0.17 0.02" rotation="90 0 0" height="0.03" radius="0.027"></a-cylinder>
+        <a-cylinder class="hittable" color-picker="color: #A0D568" position="-0.32 0.17 0.02" rotation="90 0 0" height="0.03" radius="0.027"></a-cylinder>
+        <a-cylinder class="hittable" color-picker="color: #EECE54" position="-0.25 0.17 0.02" rotation="90 0 0" height="0.03" radius="0.027"></a-cylinder>
+        <a-cylinder class="hittable" color-picker="color: #ED5564" position="-0.18 0.17 0.02" rotation="90 0 0" height="0.03" radius="0.027"></a-cylinder>
+        <a-cylinder class="hittable" color-picker="color: #FFFFFF" position="-0.11 0.17 0.02" rotation="90 0 0" height="0.03" radius="0.027"></a-cylinder>
+        <!-- Pen size: thinner / thicker (5 to 50 px, steps of 10). -->
+        <a-sphere class="hittable" size-smaller="color: white" position="0.07 0.17 0.02" radius="0.027" scale="1 1 0.4">
+            <a-text value="-" color="black" align="center" anchor="center" baseline="center" position="0 0.004 0.07" width="0.7"></a-text>
         </a-sphere>
-        
-        <a-sphere class="hittable" size-bigger="color: white" position="0.4 1.7 -0.6" radius="0.05" scale="1 1 0.3">
-            <a-text value="+" color="black" position="-0.0345 0.0 0.05" width="2"></a-text>
+        <a-text id="vr-pen-size-label" value="Pen size 10" color="#035E4F" align="center" anchor="center" baseline="center" position="0.21 0.17 0.012" width="0.5"></a-text>
+        <a-sphere class="hittable" size-bigger="color: white" position="0.35 0.17 0.02" radius="0.027" scale="1 1 0.4">
+            <a-text value="+" color="black" align="center" anchor="center" baseline="center" position="0 0 0.07" width="0.7"></a-text>
         </a-sphere>
+        <a-text value="Highlighter" color="#035E4F" anchor="left" baseline="center" position="-0.495 0.085 0.012" width="0.5"></a-text>
+        <a-box class="hittable" highlighter-picker position="-0.53 0.085 0.02" scale="0.05 0.05 0.03"></a-box>
+        <a-text id="vr-eraser-label" value="Eraser" color="#035E4F" anchor="left" baseline="center" position="-0.220 0.085 0.012" width="0.5"></a-text>
+        <a-box class="hittable" eraser-picker material="color: pink; roughness: 0.7; metalness: 0.1" position="-0.255 0.085 0.02" scale="0.05 0.05 0.03"></a-box>
+        <a-text id="vr-erase-highlights-label" value="Erase highlights" color="#035E4F" anchor="left" baseline="center" position="0.055 0.085 0.012" width="0.5"></a-text>
+        <a-box class="hittable" eraser-picker="highlightsOnly: true" material="roughness: 0.7; metalness: 0.1" position="0.02 0.085 0.02" scale="0.05 0.05 0.03"></a-box>
+        <a-text id="vr-erase-all-label" value="Erase board (x3)" color="#C0392B" anchor="left" baseline="center" position="0.330 0.085 0.012" width="0.5"></a-text>
+        <a-box class="hittable" erase-all material="color: red; roughness: 0.1; metalness: 0.7" position="0.295 0.085 0.02" scale="0.05 0.05 0.03"></a-box>
+        <a-box material="color: #B8BEC4" position="0 0.035 0.002" width="1.1" height="0.004" depth="0.004"></a-box>
 
-        <a-cylinder class="hittable" color-picker="color: black" position="-0.6 0.5 -0.52" height="0.1" radius="0.05"></a-cylinder>
-        <a-cylinder class="hittable" color-picker="color: #AC92EB" position="-0.4 0.5 -0.52" height="0.1" radius="0.05"></a-cylinder>
-        <a-cylinder class="hittable" color-picker="color: #4FC1E8" position="-0.2 0.5 -0.52" height="0.1" radius="0.05"></a-cylinder>
-        <a-cylinder class="hittable" color-picker="color: #A0D568" position="0 0.5 -0.52" height="0.1" radius="0.05"></a-cylinder>
-        <a-cylinder class="hittable" color-picker="color: #EECE54" position="0.2 0.5 -0.52" height="0.1" radius="0.05"></a-cylinder>
-        <a-cylinder class="hittable" color-picker="color: #ED5564" position="0.4 0.5 -0.52" height="0.1" radius="0.05"></a-cylinder>
-        <a-cylinder class="hittable" color-picker="color: #FFFFFF" position="0.6 0.5 -0.52" height="0.1" radius="0.05"></a-cylinder>
-        <a-box material="color: #acacac; roughness: 0.6; metalness: 0.8" position="0 0.42 -0.52" depth="0.2" height="0.02" width="1.7"></a-box>
-        
-        <!-- Eraser: touch again to switch to "Erase highlights" (highlights only). -->
-        <a-text id="vr-eraser-label" value="Eraser" color="black" position="0.82 0.9 -0.6" width="1.2"></a-text>
-        <a-box class="hittable" eraser-picker material="color: pink; roughness: 0.7; metalness: 0.1" position="0.9 0.8 -0.6" scale="0.1 0.1 0.1"></a-box>
-        
-        <!-- Highlighter: touch to pick it up, touch again for the next colour (src/components/highlighter-picker.component.js). -->
-        <a-text value="Highlighter" color="black" position="0.82 0.68 -0.6" width="1.2"></a-text>
-        <a-box class="hittable" highlighter-picker position="0.9 0.58 -0.6" scale="0.1 0.1 0.1"></a-box>
+        <!-- Boards. -->
+        <a-text value="Add whiteboard" color="#035E4F" anchor="left" baseline="center" position="-0.495 -0.015 0.012" width="0.5"></a-text>
+        <a-box class="hittable" vr-button="action: add-board" position="-0.53 -0.015 0.02" scale="0.05 0.05 0.03"></a-box>
+        <a-text value="Add 360 board" color="#035E4F" anchor="left" baseline="center" position="-0.220 -0.015 0.012" width="0.5"></a-text>
+        <a-box class="hittable" vr-button="action: add-wrap-board" position="-0.255 -0.015 0.02" scale="0.05 0.05 0.03"></a-box>
+        <a-text value="Next board" color="#035E4F" anchor="left" baseline="center" position="0.055 -0.015 0.012" width="0.5"></a-text>
+        <a-box id="vr-next-board-box" class="hittable" vr-button="action: next-board; enabled: false" position="0.02 -0.015 0.02" scale="0.05 0.05 0.03"></a-box>
+        <a-text id="vr-size-label" value="Size: 1.5 x 1 m" color="#035E4F" anchor="left" baseline="center" position="0.330 -0.015 0.012" width="0.5"></a-text>
+        <a-box id="vr-size-box" class="hittable" vr-button="action: board-size; cooldown: 800" position="0.295 -0.015 0.02" scale="0.05 0.05 0.03"></a-box>
+        <a-text id="vr-auto-place-label" value="Reset position" color="#035E4F" anchor="left" baseline="center" position="-0.495 -0.095 0.012" width="0.5"></a-text>
+        <a-box id="vr-auto-place-box" class="hittable" vr-button="action: auto-place" position="-0.53 -0.095 0.02" scale="0.05 0.05 0.03"></a-box>
+        <a-text id="vr-inside-label" value="Go inside" color="#035E4F" anchor="left" baseline="center" position="-0.220 -0.095 0.012" width="0.5"></a-text>
+        <a-box id="vr-inside-box" class="hittable" vr-button="action: go-inside; enabled: false; cooldown: 800" position="-0.255 -0.095 0.02" scale="0.05 0.05 0.03"></a-box>
+        <a-text value="Export image" color="#035E4F" anchor="left" baseline="center" position="0.055 -0.095 0.012" width="0.5"></a-text>
+        <a-box class="hittable" vr-button="action: export" position="0.02 -0.095 0.02" scale="0.05 0.05 0.03"></a-box>
+        <a-text id="vr-remove-label" value="Remove board (x3)" color="#C0392B" anchor="left" baseline="center" position="0.330 -0.095 0.012" width="0.5"></a-text>
+        <a-box id="vr-remove-board-box" class="hittable" vr-button="action: remove-board; color: #C0392B; enabled: false; cooldown: 250" position="0.295 -0.095 0.02" scale="0.05 0.05 0.03"></a-box>
+        <a-box material="color: #B8BEC4" position="0 -0.145 0.002" width="1.1" height="0.004" depth="0.004"></a-box>
 
-        <!-- Erase board needs three touches (or trigger presses) in a row, each within 3 s. -->
-        <a-text id="vr-erase-all-label" value="Erase board (x3)" color="red" position="0.8 1.18 -0.6" width="1.2"></a-text>
-        <a-box class="hittable" erase-all material="color: red; roughness: 0.1; metalness: 0.7" position="0.9 1.1 -0.6" scale="0.05 0.05 0.05"></a-box>
-
-        <a-entity position="-0.7 1.7 -0.6" room-number></a-entity>
-
-        <!-- Panel: Follow / Wrist / Stay (see src/vr/tool-panel.js). Top middle, clear of the room number and size buttons. -->
-        <a-text id="vr-panel-label" value="Panel: Follow" color="#03B594" anchor="left" position="-0.19 1.7 -0.6" width="1.2"></a-text>
-        <a-box class="hittable" vr-button="action: panel-mode; cooldown: 600" position="-0.25 1.7 -0.6" scale="0.08 0.08 0.03"></a-box>
-
-        <a-text value="Save" color="#03B594" position="-0.98 1.43 -0.6" width="1.2"></a-text>
-        <a-box class="hittable" vr-button="action: save" position="-0.9 1.35 -0.6" scale="0.08 0.08 0.03"></a-box>
-        <a-text value="Save all" color="#03B594" position="-1.0 1.18 -0.6" width="1.2"></a-text>
-        <a-box id="vr-save-all-box" class="hittable" vr-button="action: save-all; enabled: false" position="-0.9 1.1 -0.6" scale="0.08 0.08 0.03"></a-box>
-        <a-text value="Export image" color="#03B594" position="-1.04 0.93 -0.6" width="1.2"></a-text>
-        <a-box class="hittable" vr-button="action: export" position="-0.9 0.85 -0.6" scale="0.08 0.08 0.03"></a-box>
-        <a-text value="Rename" color="#03B594" position="-1.0 0.68 -0.6" width="1.2"></a-text>
-        <a-box class="hittable" vr-button="action: rename" position="-0.9 0.6 -0.6" scale="0.08 0.08 0.03"></a-box>
-        <!-- Board size: steps through the ready-made sizes. Label sits left of the button so it clears the room number. -->
-        <a-text id="vr-size-label" value="Size: 1.5 x 1 m" color="#03B594" anchor="right" align="right" position="-0.96 1.6 -0.6" width="1.2"></a-text>
-        <a-box class="hittable" vr-button="action: board-size; cooldown: 800" position="-0.9 1.6 -0.6" scale="0.08 0.08 0.03"></a-box>
-        <!-- Auto place: puts a board that was moved by hand back in the automatic layout. Below the left column, label to its left so it clears the tray. -->
-        <a-text value="Auto place" color="#03B594" anchor="right" align="right" position="-0.96 0.35 -0.6" width="1.2"></a-text>
-        <a-box id="vr-auto-place-box" class="hittable" vr-button="action: auto-place; enabled: false" position="-0.9 0.35 -0.6" scale="0.08 0.08 0.03"></a-box>
-        <a-text id="vr-status-text" value="" color="#222" align="center" position="0 0.38 -0.5" width="1.4"></a-text>
-
-        <a-text value="Add whiteboard" color="#03B594" position="0.68 1.48 -0.6" width="1.2"></a-text>
-        <a-box class="hittable" vr-button="action: add-board" position="0.9 1.4 -0.6" scale="0.08 0.08 0.03"></a-box>
-        <a-text id="vr-remove-label" value="Remove board (x3)" color="#C0392B" position="0.68 1.78 -0.6" width="1.2"></a-text>
-        <a-box id="vr-remove-board-box" class="hittable" vr-button="action: remove-board; color: #C0392B; enabled: false; cooldown: 250" position="0.9 1.7 -0.6" scale="0.08 0.08 0.03"></a-box>
-        <a-text value="Next board" color="#03B594" position="0.75 0.63 -0.6" width="1.2"></a-text>
-        <a-box id="vr-next-board-box" class="hittable" vr-button="action: next-board; enabled: false" position="0.9 0.55 -0.6" scale="0.08 0.08 0.03"></a-box>
-
-        <!-- Moving around and pointer reach: a row under the tray. -->
-        <a-text id="vr-moving-label" value="Moving: Teleport" color="#03B594" anchor="left" position="-0.69 0.2 -0.55" width="1.2"></a-text>
-        <a-box class="hittable" vr-button="action: moving-mode; cooldown: 600" position="-0.75 0.2 -0.55" scale="0.08 0.08 0.03"></a-box>
-        <a-text id="vr-reach-label" value="Reach: Long" color="#03B594" anchor="left" position="-0.09 0.2 -0.55" width="1.2"></a-text>
-        <a-box class="hittable" vr-button="action: reach; cooldown: 600" position="-0.15 0.2 -0.55" scale="0.08 0.08 0.03"></a-box>
-        <a-text value="Back to start" color="#03B594" anchor="left" position="0.51 0.2 -0.55" width="1.2"></a-text>
-        <a-box class="hittable" vr-button="action: back-to-start" position="0.45 0.2 -0.55" scale="0.08 0.08 0.03"></a-box>
-
-        <!-- 360-degree boards: a second row under the tray. -->
-        <a-text value="Add 360 board" color="#03B594" anchor="left" position="-0.69 0.08 -0.55" width="1.2"></a-text>
-        <a-box class="hittable" vr-button="action: add-wrap-board" position="-0.75 0.08 -0.55" scale="0.08 0.08 0.03"></a-box>
-        <a-text id="vr-inside-label" value="Go inside" color="#03B594" anchor="left" position="-0.09 0.08 -0.55" width="1.2"></a-text>
-        <a-box id="vr-inside-box" class="hittable" vr-button="action: go-inside; enabled: false; cooldown: 800" position="-0.15 0.08 -0.55" scale="0.08 0.08 0.03"></a-box>
+        <!-- Saving, and you: moving, reach, the panel itself. -->
+        <a-text value="Save" color="#035E4F" anchor="left" baseline="center" position="-0.495 -0.195 0.012" width="0.5"></a-text>
+        <a-box class="hittable" vr-button="action: save" position="-0.53 -0.195 0.02" scale="0.05 0.05 0.03"></a-box>
+        <a-text value="Save all" color="#035E4F" anchor="left" baseline="center" position="-0.220 -0.195 0.012" width="0.5"></a-text>
+        <a-box id="vr-save-all-box" class="hittable" vr-button="action: save-all; enabled: false" position="-0.255 -0.195 0.02" scale="0.05 0.05 0.03"></a-box>
+        <a-text value="Rename" color="#035E4F" anchor="left" baseline="center" position="0.055 -0.195 0.012" width="0.5"></a-text>
+        <a-box class="hittable" vr-button="action: rename" position="0.02 -0.195 0.02" scale="0.05 0.05 0.03"></a-box>
+        <a-text id="vr-panel-label" value="Panel: Follow" color="#035E4F" anchor="left" baseline="center" position="0.330 -0.195 0.012" width="0.5"></a-text>
+        <a-box class="hittable" vr-button="action: panel-mode; cooldown: 600" position="0.295 -0.195 0.02" scale="0.05 0.05 0.03"></a-box>
+        <a-text id="vr-moving-label" value="Moving: Teleport" color="#035E4F" anchor="left" baseline="center" position="-0.495 -0.275 0.012" width="0.5"></a-text>
+        <a-box class="hittable" vr-button="action: moving-mode; cooldown: 600" position="-0.53 -0.275 0.02" scale="0.05 0.05 0.03"></a-box>
+        <a-text id="vr-reach-label" value="Reach: Long" color="#035E4F" anchor="left" baseline="center" position="-0.220 -0.275 0.012" width="0.5"></a-text>
+        <a-box class="hittable" vr-button="action: reach; cooldown: 600" position="-0.255 -0.275 0.02" scale="0.05 0.05 0.03"></a-box>
+        <a-text value="Back to start" color="#035E4F" anchor="left" baseline="center" position="0.055 -0.275 0.012" width="0.5"></a-text>
+        <a-box class="hittable" vr-button="action: back-to-start" position="0.02 -0.275 0.02" scale="0.05 0.05 0.03"></a-box>
       </a-entity>
       <!-- Was inside the tool panel; kept still here so the lighting doesn't move with the panel. -->
       <a-light type="directional" position="0 1.8 3" rotation="-45 0 0" intensity="0.4"></a-light>
