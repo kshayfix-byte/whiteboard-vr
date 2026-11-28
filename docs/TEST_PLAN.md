@@ -346,24 +346,24 @@ Run `npm test`. It needs Node 18 or newer (tested on Node 22) and takes about a 
 
 | ID | Platform | Test | Steps | Expected | Result | Notes |
 |---|---|---|---|---|---|---|
-| M-01 | H | Panel modes | Trigger **Panel** repeatedly. Reload | Cycles Panel: Follow → Wrist → Stay. Choice survives reload | | |
+| M-01 | H | Panel modes | Trigger **Panel** repeatedly. Reload | Cycles Panel: Follow → Wrist → Stay. Choice survives reload | Pass | Pass (2026-11-28) |
 | M-02 | H | Follow: in front at start | Enter VR in Follow | Panel is in front of you | Pass | Pass by Q-01 (2026-11-28) |
-| M-03 | H | Follow: small turns | Turn your head less than 30° | Panel stays still (changed by bug 32: was ~50°) | | |
-| M-04 | H | Follow: big turns | Turn fully away and wait | Panel glides in front of you after a moment | | |
-| M-05 | H | Follow: moving | Teleport or walk more than 1 m | Panel comes along | | |
-| M-06 | H | Follow: never mid-action | Turn away while drawing, pointing at the panel, or holding a board | Panel doesn't move until you stop | | |
-| M-07 | H | Follow: snap turn | One 30° snap turn | Panel doesn't move | | |
-| M-08 | H | Follow: sitting | Sit down, turn away | Panel comes back lower | | |
+| M-03 | H | Follow: small turns | Turn your head less than 30° | Panel stays still (changed by bug 32: was ~50°) | Pass | Pass (2026-11-28) |
+| M-04 | H | Follow: big turns | Turn fully away and wait | Panel glides in front of you after a moment | Pass | Pass (2026-11-28) |
+| M-05 | H | Follow: moving | Teleport or walk more than 1 m | Panel comes along | Pass | Pass (2026-11-28) |
+| M-06 | H | Follow: never mid-action | Turn away while drawing, pointing at the panel, or holding a board | Panel doesn't move until you stop | Pass | Pass (2026-11-28) |
+| M-07 | H | Follow: snap turn | One 30° snap turn | Panel doesn't move | Pass | Pass (2026-11-28) |
+| M-08 | H | Follow: sitting | Sit down, turn away | Panel comes back lower | Pass | Pass (2026-11-28) |
 | M-09 | H | Panel doesn't block the board | Face the board | You can still draw on the middle of it | Pass | . Changed by bugs V1-V5: the panel is below the board now. Pass by Q-19 (2026-11-28) |
-| M-10 | H | Wrist: position | Choose Wrist | Small panel above the left hand, readable, facing you. Note any size, offset or tilt changes wanted | | |
+| M-10 | H | Wrist: position | Choose Wrist | Small panel above the left hand, readable, facing you. Note any size, offset or tilt changes wanted | Pass | Pass (2026-11-28) |
 | M-11 | H | Wrist: using it | Use the right controller on the wrist panel (trigger and touch) | Buttons and colours work | Pass | Pass by Q-09, Q-10 (trigger only now) (2026-11-28) |
-| M-12 | H | Wrist: left hand still works | With the wrist panel, draw, grab and teleport with the left hand | All work | | |
+| M-12 | H | Wrist: left hand still works | With the wrist panel, draw, grab and teleport with the left hand | All work | Pass | Pass (2026-11-28) |
 | M-13 | H | Off the wrist | Switch Wrist → Stay | Full size again, in front of you | Pass | Pass by Q-03 (2026-11-28) |
-| M-14 | H | Stay | Choose Stay, move around. Press B or Y | Panel stays put. B/Y brings it in front | | |
-| M-15 | H | Back to start brings panel | In Follow and Stay, press Back to start | Panel comes back too | | |
-| M-16 | H | Leave VR | Exit VR | Panel is back at the start spot for the desktop view | | |
-| M-17 | H | Every button in every mode | In each mode, try colours, size, eraser, highlighter, Erase board, Save, Rename, Save all, Export, Add/Next/Remove board, Size, Auto place, Moving, Reach, Back to start, Add 360 board, Go inside | All work | |. Auto place is now Reset position (bug V11) |
-| M-18 | H | Lighting | Turn around with the panel following | Board lighting doesn't change | | |
+| M-14 | H | Stay | Choose Stay, move around. Press B or Y | Panel stays put. B/Y brings it in front | Pass | Pass (2026-11-28) |
+| M-15 | H | Back to start brings panel | In Follow and Stay, press Back to start | Panel comes back too | Pass | Pass (2026-11-28) |
+| M-16 | H | Leave VR | Exit VR | Panel is back at the start spot for the desktop view | Pass | Pass (2026-11-28) |
+| M-17 | H | Every button in every mode | In each mode, try colours, size, eraser, highlighter, Erase board, Save, Rename, Save all, Export, Add/Next/Remove board, Size, Auto place, Moving, Reach, Back to start, Add 360 board, Go inside | All work | Pass | . Auto place is now Reset position (bug V11). Pass (2026-11-28) |
+| M-18 | H | Lighting | Turn around with the panel following | Board lighting doesn't change | Pass | Pass (2026-11-28) |
 
 ### N. 360° boards (PR #8)
 
