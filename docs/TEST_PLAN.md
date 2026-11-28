@@ -261,15 +261,15 @@ Run `npm test`. It needs Node 18 or newer (tested on Node 22) and takes about a 
 
 | ID | Platform | Test | Steps | Expected | Result | Notes |
 |---|---|---|---|---|---|---|
-| I-01 | D | Needs three clicks | Click **Remove whiteboard** once, then twice | Button counts down ("Click 2 more times…"). Board is still there | | |
-| I-02 | D | Third click removes | Click three times, each within 3 s | Board is removed for everyone. Page moves to the next board | | |
-| I-03 | D | Count resets after 3 s | Click once, wait 4 s, click twice | Board is not removed | | |
-| I-04 | D | Count resets on tab switch | Click twice, switch tabs, click once | Nothing is removed | | |
-| I-05 | D | Last board | Room with one board | Remove is disabled (or refused with a message) | | |
-| I-06 | S | Copy kept | After I-02, look in `data/removed/` | A file `<ROOM>.<board id>.<time>.json` holds the removed board | | |
-| I-07 | S | Removed stays removed | Remove a saved board, restart the server | It doesn't come back | | |
-| I-08 | H | Remove in VR | Trigger the red **Remove board (x3)** box three times | Label counts down. Only the selected board is removed | | |
-| I-09 | V | Ring closes the gap | Remove a middle board in the VR page | Later auto-placed boards move along the ring. Boards placed by hand stay | | |
+| I-01 | D | Needs three clicks | Click **Remove whiteboard** once, then twice | Button counts down ("Click 2 more times…"). Board is still there | Pass | Pass (2026-11-28) |
+| I-02 | D | Third click removes | Click three times, each within 3 s | Board is removed for everyone. Page moves to the next board | Pass | Pass (2026-11-28) |
+| I-03 | D | Count resets after 3 s | Click once, wait 4 s, click twice | Board is not removed | Pass | Pass (2026-11-28) |
+| I-04 | D | Count resets on tab switch | Click twice, switch tabs, click once | Nothing is removed | Pass | Pass (2026-11-28) |
+| I-05 | D | Last board | Room with one board | Remove is disabled (or refused with a message) | Pass | Pass (2026-11-28) |
+| I-06 | S | Copy kept | After I-02, look in `data/removed/` | A file `<ROOM>.<board id>.<time>.json` holds the removed board | Pass | Pass (2026-11-28) |
+| I-07 | S | Removed stays removed | Remove a saved board, restart the server | It doesn't come back | Pass | Pass (2026-11-28) |
+| I-08 | H | Remove in VR | Trigger the red **Remove board (x3)** box three times | Label counts down. Only the selected board is removed | Pass | Pass (2026-11-28) |
+| I-09 | V | Ring closes the gap | Remove a middle board in the VR page | Later auto-placed boards move along the ring. Boards placed by hand stay | Pass | Pass (2026-11-28) |
 
 ### J. Board size and 2D zoom (PR #4)
 
