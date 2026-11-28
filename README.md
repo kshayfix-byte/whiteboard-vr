@@ -145,8 +145,6 @@ Closed the list by accident? Press **Restore unsaved** in the toolbar to bring i
 - Restore unsaved whiteboards pop-up: give the "Not now" button a different colour so it stands out
 - Remember your settings between visits (default reach, smooth or teleport movement)
 - Show the selected whiteboard with a bright border (for example bright blue) that flashes briefly when you select it, instead of the "Selected: ..." text
-- VR move control acts on the whiteboard you're pointing at
-- Compact panel layout for wrist mode
 - New panel mode that arranges the controls around the border of the selected whiteboard
 - Room saving: save a room and reopen it later, with every whiteboard back in the same 3D position
 - Non-VR 3D mode (desktop and mobile): move the panel controls and whiteboards directly with mouse or touch
