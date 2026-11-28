@@ -10,7 +10,7 @@
 // nearest one counts; use nearestHit() before acting on a hit.
 //
 // Things that used to react to a mere touch (colour cylinders, eraser,
-// Erase All) still do when the pointer touches them from within NEAR_REACH.
+// Erase board) still do when the pointer touches them from within NEAR_REACH.
 // From further away they need a trigger press, so sweeping the pointer across
 // the tray can't change your colour or wipe a board by accident.
 
@@ -63,7 +63,7 @@ export function nearestHit(raycasterEl, el) {
 }
 
 // For things that react when the pointer touches them (colour cylinders,
-// eraser, Erase All). Calls activate(controllerEl) once per touch when the
+// eraser, Erase board). Calls activate(controllerEl) once per touch when the
 // pointer touches `el` from within NEAR_REACH, or when the trigger is pulled
 // while `el` is the nearest thing the pointer hits. Call tick() every frame.
 export function watchTouch(el, activate) {

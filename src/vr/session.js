@@ -1,6 +1,6 @@
 // State shared by everything in the VR page: the socket, the room, the
 // current drawing tool (shared by every whiteboard), and which whiteboard is
-// selected (the one Save, Rename, Export and Erase All act on).
+// selected (the one Save, Rename, Export and Erase board act on).
 import io from 'socket.io-client';
 import { normalizeRoom, HIGHLIGHT_COLORS, DEFAULT_HIGHLIGHT_SIZE } from '../board-client';
 

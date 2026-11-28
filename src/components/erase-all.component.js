@@ -1,4 +1,4 @@
-// The red "Erase All" box. As in the original, touching it with the laser
+// The red "Erase board" box. As in the original, touching it with the laser
 // erases a board; with several boards it erases the selected one (vr.js
 // handles the `erase-all` action). With the long pointer, a touch only counts
 // from within 20 cm; from further away it needs a trigger press, so sweeping

@@ -142,14 +142,15 @@ Run `npm test`. It needs Node 18 or newer (tested on Node 22) and takes about a 
 | B-03 | D | Brush size | Move **Brush size** from 5 to 50, draw at each end | Line gets thicker. Size range is 5 to 50 px | Pass | |
 | B-04 | D | Eraser | Choose **Eraser**, drag over a line | The line is rubbed out back to the board colour | Pass | |
 | B-05 | D | Back to marker | After erasing, pick a colour | Tool goes back to the marker with that colour | Pass | |
-| B-06 | D | Erase whole board | Draw, then **Erase whole board** | The current board is cleared | Pass | Changed by bug 4: now needs 3 clicks, retest with B-10 |
+| B-06 | D | Erase board | Draw, then **Erase board** | The current board is cleared | Pass | Changed by bug 4: now needs 3 clicks, retest with B-10 |
 | B-07 | M | Touch drawing | On a phone, draw with a finger | Line follows the finger. The page doesn't scroll while drawing | Pass | |
 | B-08 | M | Phone layout | Use the toolbar and tab bar on a phone | All buttons can be reached (the tab bar scrolls sideways) | Fail | Bug 2. Retest with B-08b |
 | B-09 | D | Drawing off the edge | Start inside the board, drag out and back in | No stray lines across the board. Drawing stops cleanly when the mouse is released outside | Fail | Bug 3. Retest with B-09b |
-| B-08b | M | Phone layout with Options menu | On a phone (portrait): check the tab bar, tools row and toolbar. Tap **☰ Options**, use each button in it, tap outside it | Nothing is cut off at the sides. Tabs scroll sideways on their own row; Add, Size and zoom sit below them. Options opens a pop-up with Rename, Save all, Saved boards, Restore unsaved, Export image, Erase whole board, Remove whiteboard, Join other room. It closes after a choice (but stays open for Erase and Remove, which need 3 taps) or when you tap outside. On a wide screen the toolbar looks as before | | Fix for bug 2 |
-| B-09b | D, M | Leaving and re-entering the board | Hold the mouse button inside the board, drag off the top, along, and back in at another spot, then let go. Repeat with a finger on a phone | Two separate lines: one ends where you left the board, a new one starts where you came back in. Nothing is drawn between the two points | | Fix for bug 3 |
+| B-08b | M | Phone layout with Options menu | On a phone (portrait): check the tab bar, tools row and toolbar. Tap **☰ Options**, use each button in it, tap outside it | Nothing is cut off at the sides. Tabs scroll sideways on their own row; Add, Size and zoom sit below them. Options opens a pop-up with Rename, Save all, Saved boards, Restore unsaved, Export image, Erase board, Remove whiteboard, Join other room. It closes after a choice (but stays open for Erase and Remove, which need 3 taps) or when you tap outside. On a wide screen the toolbar looks as before | Fail | Bug 6 (iPad landscape). Retest with B-08c |
+| B-08c | M | Tablet and phone sideways | On an iPad in landscape (and a phone on its side), open a board at Fit (zoom out greyed) | The whole board, including its bottom edge and grey frame, sits above the toolbar. On a phone on its side the board is small; if it still doesn't fit, the page scrolls so its bottom can be brought above the toolbar | | Fix for bug 6 |
+| B-09b | D, M | Leaving and re-entering the board | Hold the mouse button inside the board, drag off the top, along, and back in at another spot, then let go. Repeat with a finger on a phone | Two separate lines: one ends where you left the board, a new one starts where you came back in. Nothing is drawn between the two points | Pass | Fix for bug 3 |
 | B-09c | D | Stroke after a drag that started off the board | Press the mouse button on the white area above the board, drag onto the board, let go. Then draw a normal line on the board | The first drag draws nothing. The normal line draws as usual | | Fix for bug 5 |
-| B-10 | D | Erase whole board needs 3 clicks | Draw. Click **Erase whole board** once, then twice. Wait 4 s, click twice. Then click three times quickly. Also click twice, switch tabs, click once | Button counts down ("Click 2 more times to erase") and turns red. Only the third click within 3 s of the last erases the board, for everyone. Waiting or switching tabs starts the count again | | Bug 4 (new) |
+| B-10 | D | Erase board needs 3 clicks | Draw. Click **Erase board** once, then twice. Wait 4 s, click twice. Then click three times quickly. Also click twice, switch tabs, click once | Button counts down ("Click 2 more times to erase") and turns red. Only the third click within 3 s of the last erases the board, for everyone. Waiting or switching tabs starts the count again | Pass | Bug 4 (new) |
 
 ### C. Live sync between people (original)
 
@@ -158,7 +159,7 @@ Run `npm test`. It needs Node 18 or newer (tested on Node 22) and takes about a 
 | C-01 | D | Two people, same room | Open the same room in two windows. Draw in one | The other window shows the line straight away | | |
 | C-02 | D | Different rooms stay separate | Open room A and room B. Draw in A | Room B doesn't change | | |
 | C-03 | D | Late joiner | Draw in a room, then open the same room in a new window | The new window shows everything already drawn (new: the original showed a blank board) | | |
-| C-04 | D | Erase whole board syncs | Erase the board in one window | The other window is cleared too | | |
+| C-04 | D | Erase board syncs | Erase the board in one window | The other window is cleared too | | |
 | C-05 | D + V | 2D to VR and back | Open the same room in 2D and in the VR page. Draw in each | Each stroke appears on the other | | |
 | C-06 | D | Server restart | Draw, stop the server (Ctrl+C) and start it again | Pages reconnect by themselves. Unsaved drawing is offered for restore (see F) | | |
 | C-07 | D + M | Phone and desktop | Draw on the phone and the desktop in the same room | Both see each other's lines | | |
@@ -167,14 +168,14 @@ Run `npm test`. It needs Node 18 or newer (tested on Node 22) and takes about a 
 
 | ID | Platform | Test | Steps | Expected | Result | Notes |
 |---|---|---|---|---|---|---|
-| D-01 | V | Scene loads | Open `/vr.html?room=ABCDE` | Board, tool tray, colour cylinders, +/- boxes, eraser, Erase All and buttons are visible. No errors in the browser console | | |
+| D-01 | V | Scene loads | Open `/vr.html?room=ABCDE` | Board, tool tray, colour cylinders, +/- boxes, eraser, Erase board and buttons are visible. No errors in the browser console | | |
 | D-02 | V | Look and walk | Drag with the mouse to look. Use WASD or arrows to walk | Camera turns and moves | | |
 | D-03 | H | Enter VR | Press the VR button and put on the headset | Immersive view with both controllers visible | | |
 | D-04 | H | Draw on the board | Hold the controller tip against the board and pull the trigger | A line is drawn where the tip touches. 2D page shows it too | | |
 | D-05 | H | Pick a colour | Touch a colour cylinder | Pen dot changes colour. Next stroke uses it | | |
 | D-06 | H | Pen size | Touch **+** and **-** | Pen dot grows and shrinks. Strokes match the dot | | |
 | D-07 | H | Eraser | Touch the eraser box, then draw over a line | Line is rubbed out | | |
-| D-08 | H | Erase All | Touch the red **Erase All (x3)** box three times in a row (pull away between touches), each within 3 s | Label counts down ("Touch 2 more") and the status line asks to confirm. Only the third touch erases the selected board, everywhere. Waiting 3 s or selecting another board starts over | | Changed by bug 4 |
+| D-08 | H | Erase board | Touch the red **Erase board (x3)** box three times in a row (pull away between touches), each within 3 s | Label counts down ("Touch 2 more") and the status line asks to confirm. Only the third touch erases the selected board, everywhere. Waiting 3 s or selecting another board starts over | | Changed by bug 4 |
 | D-09 | H | Text readable | Look at labels and the room label | Text is readable and not blurry | | |
 | D-10 | H | Leave VR | Take off / exit VR | The page returns to the normal desktop view without errors | | |
 
@@ -325,7 +326,7 @@ Run `npm test`. It needs Node 18 or newer (tested on Node 22) and takes about a 
 | L-12 | H | Close drawing unchanged | Draw up close | Feels the same as before | | |
 | L-13 | H | Only the first hit counts | Put one board in front of another, draw | Only the front board gets ink | | |
 | L-14 | H | Far sweep over tools | Sweep the pointer over colours and the eraser from far | Nothing changes. A trigger press picks one | | |
-| L-15 | H | Far sweep over Erase All | Sweep over Erase All from far, then press trigger 3 times, then touch it 3 times within 20 cm | Sweep keeps the board (and doesn't count as a touch). Three trigger presses erase. Three touches erase | | Changed by bug 4 |
+| L-15 | H | Far sweep over Erase board | Sweep over Erase board from far, then press trigger 3 times, then touch it 3 times within 20 cm | Sweep keeps the board (and doesn't count as a touch). Three trigger presses erase. Three touches erase | | Changed by bug 4 |
 | L-16 | H | Buttons from far | Use Save, Next board, etc. from a distance | They work with the trigger | | |
 | L-17 | H | Reach 20 cm | Press **Reach** | "Reach: 20 cm". Drawing only works close up. Press again for Long | | |
 | L-18 | V | Desktop still works | VR page without headset | Mouse drawing, WASD, buttons all work | | |
@@ -351,7 +352,7 @@ Run `npm test`. It needs Node 18 or newer (tested on Node 22) and takes about a 
 | M-14 | H | Stay | Choose Stay, move around. Press B or Y | Panel stays put. B/Y brings it in front | | |
 | M-15 | H | Back to start brings panel | In Follow and Stay, press Back to start | Panel comes back too | | |
 | M-16 | H | Leave VR | Exit VR | Panel is back at the start spot for the desktop view | | |
-| M-17 | H | Every button in every mode | In each mode, try colours, size, eraser, highlighter, Erase All, Save, Rename, Save all, Export, Add/Next/Remove board, Size, Auto place, Moving, Reach, Back to start, Add 360 board, Go inside | All work | | |
+| M-17 | H | Every button in every mode | In each mode, try colours, size, eraser, highlighter, Erase board, Save, Rename, Save all, Export, Add/Next/Remove board, Size, Auto place, Moving, Reach, Back to start, Add 360 board, Go inside | All work | | |
 | M-18 | H | Lighting | Turn around with the panel following | Board lighting doesn't change | | |
 
 ### N. 360° boards (PR #8)
@@ -362,7 +363,7 @@ Run `npm test`. It needs Node 18 or newer (tested on Node 22) and takes about a 
 | N-02 | D | Turn the view | ◀ Turn / Turn ▶ / Front | View turns 45° each press. Front resets. "front (in VR)" and "behind (edges join here)" tags show | | |
 | N-03 | D | Draw across the join | Turn so the "behind" line is in the middle, draw across it | Line carries on across the join with no gap or jump | | |
 | N-04 | D | Export | Export a 360° board | 8000 × 1800 PNG without the front/behind tags | | |
-| N-05 | D + V | Sync | Draw and Erase whole board on a 360° board in 2D, VR page and a second window | All stay in step | | |
+| N-05 | D + V | Sync | Draw and Erase board on a 360° board in 2D, VR page and a second window | All stay in step | | |
 | N-06 | H | Add from VR | Trigger **Add 360 board** (row under the tray) | A grey drum appears behind the start. Message says to press Go inside | | |
 | N-07 | H | Go inside / Step out | Select the drum, press **Go inside**. Press again, or Back to start | You're in the middle facing the front. Label says "Step out". Pressing again or Back to start takes you out. Go inside is grey unless a 360° board is selected | | |
 | N-08 | H | Draw all round | Draw all the way round, including behind you across the join | Ink appears everywhere. Pen dot shows on the wall | | |
@@ -444,6 +445,8 @@ Copy a row for each problem. Put the bug number in the test's Notes column.
 | 1 | A-06 | V, desktop browser | Once the VR page is open there is no way back to the 2D page. Pressing the VR button again only goes full screen | A button that returns to the 2D view | Click VR on the 2D page, then look for a way back | Major | Fixed: **← 2D view** button in the VR page toolbar (opens the 2D page on the same room and selected board). Retest with A-06b |
 | 2 | B-08 | M, iPhone | On a phone many toolbar and tab-bar buttons are off the edge of the screen and can't be reached | Every button can be reached; extra ones in an options menu | Open the 2D page on a phone in portrait | Major | Fixed: on screens up to 800 px wide the toolbar wraps, the extra buttons move into a **☰ Options** pop-up, and the tab bar wraps onto two rows. Retest with B-08b |
 | 3 | B-09 | D, desktop browser | Dragging off the board and back in draws a straight line between where the pen left and where it came back | The line stops at the edge and a new one starts where the pen comes back in | Hold the mouse button, drag off the top of the board and back in further along | Minor | Fixed: leaving the board ends the line; coming back with the button held starts a new one. Letting go outside the board now also ends the stroke. Same for touch. Retest with B-09b |
-| 4 | B-06 (new feature) | D, H | **Erase whole board** (2D) and **Erase All** (VR) clear the board with one press, with no confirmation | Three presses in a row, like Remove whiteboard | Press Erase whole board once | Feature | Done: 2D button needs 3 clicks within 3 s each and counts down. The VR box is now "Erase All (x3)" and needs 3 touches or trigger presses. Retest with B-10, D-08, L-15 |
+| 4 | B-06 (new feature) | D, H | **Erase board** (2D) and **Erase board** (VR) clear the board with one press, with no confirmation | Three presses in a row, like Remove whiteboard | Press Erase board once | Feature | Done: 2D button needs 3 clicks within 3 s each and counts down. The VR box is now "Erase board (x3)" and needs 3 touches or trigger presses. Retest with B-10, D-08, L-15 |
 | 5 | B-09c (found while fixing bug 3) | D, desktop browser | After pressing the mouse button above the board and dragging onto it, later strokes on the board stopped after the first bit (the browser was dragging the selected text instead) | Strokes always draw | Press above the board, drag onto it, let go, then draw | Minor | Fixed: pressing on the board no longer selects or drags page text. Retest with B-09c |
-| 6 | | | | | | | |
+| 6 | B-08b | M, iPad landscape | At Fit (fully zoomed out), the bottom of the board is hidden behind the toolbar | The whole board fits above the toolbar | Open the 2D page on an iPad in landscape | Major | Fixed: Fit now measures the tab bar and toolbar and keeps the board between them; it re-fits when the toolbar changes height. On very short screens the page gets room to scroll the board above the toolbar. Retest with B-08c |
+| 7 | B-10 (wording) | D, V, H | Erase button called "Erase whole board" in 2D and "Erase All" in VR | The same name, "Erase board", in both | Compare the two pages | Minor | Done: "Erase board" in 2D, "Erase board (x3)" on the VR box, and a new **Erase board** button in the VR page's desktop toolbar (same 3 clicks) |
+| 8 | | | | | | | |
