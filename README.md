@@ -18,7 +18,7 @@ Try it yourself: [https://whiteboard-vr.herokuapp.com](https://whiteboard-vr.her
 2. Navigate to directory `cd whiteboard-vr`
 3. Install dependencies `npm install`
 4. Build project `npm run build`
-5. Start Webserver (with socket.io) `npm run start`
+5. Start Webserver (with socket.io) `npm run start`. It serves `http://<your IP>:3000`. For VR headsets, run `npm run cert` once first: the server then also serves `https://<your IP>:3443` (accept the self-signed certificate warning once). Browsers only allow VR on https pages.
 
 ## Testing
 

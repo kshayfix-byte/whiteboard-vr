@@ -5,7 +5,8 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node server.js",
-    "start:ssl": "npm run build && node server-ssl.js",
+    "start:ssl": "npm run build && node server.js",
+    "cert": "openssl req -x509 -newkey rsa:2048 -nodes -sha256 -days 825 -keyout key.pem -out cert.pem -subj /CN=whiteboard-vr",
     "dev": "webpack-dev-server --config webpack.dev.config.js --open",
     "build": "webpack --config webpack.prod.config.js",
     "test": "node --test \"test/*.test.js\" \"test/*.test.mjs\""
