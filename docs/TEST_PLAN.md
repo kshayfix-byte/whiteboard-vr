@@ -128,7 +128,7 @@ Run `npm test`. It needs Node 18 or newer (tested on Node 22) and takes about a 
 | A-04 | D | Join other room | Click **Join other room**, type `abcde`, OK | Page opens room `ABCDE` (upper case) | Pass | |
 | A-05 | D | Join cancelled | Click **Join other room**, press Cancel (and try empty) | Nothing changes | Pass | |
 | A-06 | D | VR link | Click **VR** | VR page opens for the same room (and same board, if not the first) | Fail | Bug 1: no way back to 2D from the VR page |
-| A-06b | V | Back to 2D | On the VR page, select the 2nd board and click **← 2D view** (top left). Then press the VR button (goes full screen), press Esc, and click **← 2D view** again | 2D page opens for the same room on the selected board. Esc leaves full screen first | | Fix for bug 1 |
+| A-06b | V | Back to 2D | On the VR page, select the 2nd board and click **← 2D view** (top left). Then press the VR button (goes full screen), press Esc, and click **← 2D view** again | 2D page opens for the same room on the selected board. Esc leaves full screen first | Pass | |
 | A-07 | V | VR page with no room | Open `/vr.html` with no `?room=` | Address gets a random room code. The scene loads | Pass | |
 | A-08 | V | Room label in VR | Open `/vr.html?room=ABCDE` | The scene's room label shows ABCDE | Pass | |
 | A-09 | D | Lower-case room in address | Open `index.html?room=abcde` | Same room as `ABCDE` (shows the same drawings) | Pass | |
@@ -137,15 +137,19 @@ Run `npm test`. It needs Node 18 or newer (tested on Node 22) and takes about a 
 
 | ID | Platform | Test | Steps | Expected | Result | Notes |
 |---|---|---|---|---|---|---|
-| B-01 | D | Draw with the mouse | Hold the mouse button and drag | A smooth line with round ends follows the cursor | | |
-| B-02 | D | Colour | Pick red in **Colour**, draw | Line is red | | |
-| B-03 | D | Brush size | Move **Brush size** from 5 to 50, draw at each end | Line gets thicker. Size range is 5 to 50 px | | |
-| B-04 | D | Eraser | Choose **Eraser**, drag over a line | The line is rubbed out back to the board colour | | |
-| B-05 | D | Back to marker | After erasing, pick a colour | Tool goes back to the marker with that colour | | |
-| B-06 | D | Erase whole board | Draw, then **Erase whole board** | The current board is cleared | | |
-| B-07 | M | Touch drawing | On a phone, draw with a finger | Line follows the finger. The page doesn't scroll while drawing | | |
-| B-08 | M | Phone layout | Use the toolbar and tab bar on a phone | All buttons can be reached (the tab bar scrolls sideways) | | |
-| B-09 | D | Drawing off the edge | Start inside the board, drag out and back in | No stray lines across the board. Drawing stops cleanly when the mouse is released outside | | |
+| B-01 | D | Draw with the mouse | Hold the mouse button and drag | A smooth line with round ends follows the cursor | Pass | |
+| B-02 | D | Colour | Pick red in **Colour**, draw | Line is red | Pass | |
+| B-03 | D | Brush size | Move **Brush size** from 5 to 50, draw at each end | Line gets thicker. Size range is 5 to 50 px | Pass | |
+| B-04 | D | Eraser | Choose **Eraser**, drag over a line | The line is rubbed out back to the board colour | Pass | |
+| B-05 | D | Back to marker | After erasing, pick a colour | Tool goes back to the marker with that colour | Pass | |
+| B-06 | D | Erase whole board | Draw, then **Erase whole board** | The current board is cleared | Pass | Changed by bug 4: now needs 3 clicks, retest with B-10 |
+| B-07 | M | Touch drawing | On a phone, draw with a finger | Line follows the finger. The page doesn't scroll while drawing | Pass | |
+| B-08 | M | Phone layout | Use the toolbar and tab bar on a phone | All buttons can be reached (the tab bar scrolls sideways) | Fail | Bug 2. Retest with B-08b |
+| B-09 | D | Drawing off the edge | Start inside the board, drag out and back in | No stray lines across the board. Drawing stops cleanly when the mouse is released outside | Fail | Bug 3. Retest with B-09b |
+| B-08b | M | Phone layout with Options menu | On a phone (portrait): check the tab bar, tools row and toolbar. Tap **☰ Options**, use each button in it, tap outside it | Nothing is cut off at the sides. Tabs scroll sideways on their own row; Add, Size and zoom sit below them. Options opens a pop-up with Rename, Save all, Saved boards, Restore unsaved, Export image, Erase whole board, Remove whiteboard, Join other room. It closes after a choice (but stays open for Erase and Remove, which need 3 taps) or when you tap outside. On a wide screen the toolbar looks as before | | Fix for bug 2 |
+| B-09b | D, M | Leaving and re-entering the board | Hold the mouse button inside the board, drag off the top, along, and back in at another spot, then let go. Repeat with a finger on a phone | Two separate lines: one ends where you left the board, a new one starts where you came back in. Nothing is drawn between the two points | | Fix for bug 3 |
+| B-09c | D | Stroke after a drag that started off the board | Press the mouse button on the white area above the board, drag onto the board, let go. Then draw a normal line on the board | The first drag draws nothing. The normal line draws as usual | | Fix for bug 5 |
+| B-10 | D | Erase whole board needs 3 clicks | Draw. Click **Erase whole board** once, then twice. Wait 4 s, click twice. Then click three times quickly. Also click twice, switch tabs, click once | Button counts down ("Click 2 more times to erase") and turns red. Only the third click within 3 s of the last erases the board, for everyone. Waiting or switching tabs starts the count again | | Bug 4 (new) |
 
 ### C. Live sync between people (original)
 
@@ -170,7 +174,7 @@ Run `npm test`. It needs Node 18 or newer (tested on Node 22) and takes about a 
 | D-05 | H | Pick a colour | Touch a colour cylinder | Pen dot changes colour. Next stroke uses it | | |
 | D-06 | H | Pen size | Touch **+** and **-** | Pen dot grows and shrinks. Strokes match the dot | | |
 | D-07 | H | Eraser | Touch the eraser box, then draw over a line | Line is rubbed out | | |
-| D-08 | H | Erase All | Touch the red **Erase All** box | The selected board is cleared everywhere | | |
+| D-08 | H | Erase All | Touch the red **Erase All (x3)** box three times in a row (pull away between touches), each within 3 s | Label counts down ("Touch 2 more") and the status line asks to confirm. Only the third touch erases the selected board, everywhere. Waiting 3 s or selecting another board starts over | | Changed by bug 4 |
 | D-09 | H | Text readable | Look at labels and the room label | Text is readable and not blurry | | |
 | D-10 | H | Leave VR | Take off / exit VR | The page returns to the normal desktop view without errors | | |
 
@@ -321,7 +325,7 @@ Run `npm test`. It needs Node 18 or newer (tested on Node 22) and takes about a 
 | L-12 | H | Close drawing unchanged | Draw up close | Feels the same as before | | |
 | L-13 | H | Only the first hit counts | Put one board in front of another, draw | Only the front board gets ink | | |
 | L-14 | H | Far sweep over tools | Sweep the pointer over colours and the eraser from far | Nothing changes. A trigger press picks one | | |
-| L-15 | H | Far sweep over Erase All | Sweep over Erase All from far, then press trigger, then touch within 20 cm | Sweep keeps the board. Trigger erases. Touch erases | | |
+| L-15 | H | Far sweep over Erase All | Sweep over Erase All from far, then press trigger 3 times, then touch it 3 times within 20 cm | Sweep keeps the board (and doesn't count as a touch). Three trigger presses erase. Three touches erase | | Changed by bug 4 |
 | L-16 | H | Buttons from far | Use Save, Next board, etc. from a distance | They work with the trigger | | |
 | L-17 | H | Reach 20 cm | Press **Reach** | "Reach: 20 cm". Drawing only works close up. Press again for Long | | |
 | L-18 | V | Desktop still works | VR page without headset | Mouse drawing, WASD, buttons all work | | |
@@ -438,5 +442,8 @@ Copy a row for each problem. Put the bug number in the test's Notes column.
 | Bug # | Test ID | Platform / device / browser | What happened | What should happen | Steps to repeat | Severity (blocker / major / minor) | Status |
 |---|---|---|---|---|---|---|---|
 | 1 | A-06 | V, desktop browser | Once the VR page is open there is no way back to the 2D page. Pressing the VR button again only goes full screen | A button that returns to the 2D view | Click VR on the 2D page, then look for a way back | Major | Fixed: **← 2D view** button in the VR page toolbar (opens the 2D page on the same room and selected board). Retest with A-06b |
-| 2 | | | | | | | |
-| 3 | | | | | | | |
+| 2 | B-08 | M, iPhone | On a phone many toolbar and tab-bar buttons are off the edge of the screen and can't be reached | Every button can be reached; extra ones in an options menu | Open the 2D page on a phone in portrait | Major | Fixed: on screens up to 800 px wide the toolbar wraps, the extra buttons move into a **☰ Options** pop-up, and the tab bar wraps onto two rows. Retest with B-08b |
+| 3 | B-09 | D, desktop browser | Dragging off the board and back in draws a straight line between where the pen left and where it came back | The line stops at the edge and a new one starts where the pen comes back in | Hold the mouse button, drag off the top of the board and back in further along | Minor | Fixed: leaving the board ends the line; coming back with the button held starts a new one. Letting go outside the board now also ends the stroke. Same for touch. Retest with B-09b |
+| 4 | B-06 (new feature) | D, H | **Erase whole board** (2D) and **Erase All** (VR) clear the board with one press, with no confirmation | Three presses in a row, like Remove whiteboard | Press Erase whole board once | Feature | Done: 2D button needs 3 clicks within 3 s each and counts down. The VR box is now "Erase All (x3)" and needs 3 touches or trigger presses. Retest with B-10, D-08, L-15 |
+| 5 | B-09c (found while fixing bug 3) | D, desktop browser | After pressing the mouse button above the board and dragging onto it, later strokes on the board stopped after the first bit (the browser was dragging the selected text instead) | Strokes always draw | Press above the board, drag onto it, let go, then draw | Minor | Fixed: pressing on the board no longer selects or drags page text. Retest with B-09c |
+| 6 | | | | | | | |
